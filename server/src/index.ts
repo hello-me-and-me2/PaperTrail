@@ -3,6 +3,7 @@ import cors from 'cors';
 import rateLimit from 'express-rate-limit';
 import searchRouter from './routes/search';
 import analysisRouter from './routes/analysis';
+import investigateRouter from './routes/investigate';
 
 const app = express();
 const PORT = process.env.PORT || 3001;
@@ -19,6 +20,7 @@ app.use(limiter);
 
 app.use('/api/search', searchRouter);
 app.use('/api/analysis', analysisRouter);
+app.use('/api/investigate', investigateRouter);
 
 app.get('/api/health', (_req, res) => {
   res.json({ status: 'ok', timestamp: new Date().toISOString() });

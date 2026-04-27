@@ -1,4 +1,5 @@
-import { Shield, TrendingUp, FileSearch, AlertTriangle, ExternalLink } from 'lucide-react';
+import { Shield, TrendingUp, FileSearch, AlertTriangle, ExternalLink, Crosshair } from 'lucide-react';
+import { Link } from 'react-router-dom';
 import SearchBar from '../components/SearchBar';
 
 const EXAMPLES = [
@@ -75,8 +76,19 @@ export default function Home() {
             patterns of potential mismanagement — all backed by official public records.
           </p>
 
-          <div className="flex justify-center mb-6">
+          <div className="flex justify-center mb-4">
             <SearchBar autoFocus />
+          </div>
+
+          <div className="flex justify-center mb-6">
+            <Link
+              to="/investigate"
+              className="flex items-center gap-2 bg-dark-700 hover:bg-dark-600 border border-dark-500 hover:border-accent/50 text-slate-300 hover:text-white text-sm font-medium px-5 py-2.5 rounded-xl transition-all"
+            >
+              <Crosshair className="w-4 h-4 text-accent" />
+              Investigate multiple targets simultaneously
+              <span className="text-xs bg-accent/20 text-accent rounded-full px-2 py-0.5">AI</span>
+            </Link>
           </div>
 
           <div className="flex flex-wrap justify-center gap-2">
