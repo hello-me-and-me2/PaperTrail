@@ -58,7 +58,7 @@ export default function Home() {
 
           <h1 className="text-5xl sm:text-6xl font-bold text-white mb-4 tracking-tight leading-tight">
             Follow the{' '}
-            <span className="text-accent">Paper Trail</span>
+            <span className="text-accent">PaperTrail</span>
           </h1>
           <p className="text-lg text-slate-400 mb-10 max-w-2xl mx-auto leading-relaxed">
             Analyze federal government spending to surface no-bid contracts, award concentration, and

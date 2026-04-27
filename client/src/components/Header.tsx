@@ -13,7 +13,7 @@ export default function Header() {
             <FileText className="w-4 h-4 text-white" />
           </div>
           <div>
-            <span className="text-white font-bold text-lg leading-none">Paper </span>
+            <span className="text-white font-bold text-lg leading-none">Paper</span>
             <span className="text-accent font-bold text-lg leading-none">Trail</span>
           </div>
         </Link>
