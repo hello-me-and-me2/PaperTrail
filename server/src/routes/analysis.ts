@@ -1,126 +1,101 @@
 import { Router, Request, Response } from 'express';
 import {
-  searchAwardsByKeyword,
-  searchAwardsByRecipient,
-  searchAwardsByAgency,
-  getSpendingOverTime,
-  getSoleSourceAwards,
+  searchAwardsByKeyword, searchAwardsByRecipient, searchAwardsByAgency,
+  getSpendingOverTime, getSoleSourceAwards, fetchRecipientProfile,
 } from '../services/usaSpending';
+import { searchFederalRegister, searchDebarments } from '../services/federalRegister';
 import { analyzeEntity } from '../services/analyzer';
 
 const router = Router();
 
+async function gatherAwards(type: 'recipient' | 'agency' | 'person', name: string) {
+  const [primary, keyword, soleSource] = await Promise.allSettled([
+    type === 'recipient' ? searchAwardsByRecipient(name, 1, 100)
+    : type === 'agency'  ? searchAwardsByAgency(name, 1, 100)
+    :                      searchAwardsByKeyword(name, 1, 100),
+    searchAwardsByKeyword(name, 1, 50),
+    getSoleSourceAwards(name, 50),
+  ]);
+
+  const seen = new Set<string>();
+  const all = [];
+  for (const r of [primary, keyword, soleSource]) {
+    if (r.status !== 'fulfilled') continue;
+    const list = Array.isArray(r.value) ? r.value : (r.value as { results?: unknown[] }).results ?? [];
+    for (const a of list as { 'Award ID': string }[]) {
+      if (!seen.has(a['Award ID'])) { seen.add(a['Award ID']); all.push(a); }
+    }
+  }
+  return all;
+}
+
+async function gatherFedRegDocs(name: string) {
+  const [general, sanctions] = await Promise.allSettled([
+    searchFederalRegister(name, 6),
+    searchDebarments(name, 5),
+  ]);
+  const seen = new Set<string>();
+  const all = [];
+  for (const r of [general, sanctions]) {
+    if (r.status !== 'fulfilled') continue;
+    for (const d of r.value) {
+      if (!seen.has(d.document_number)) { seen.add(d.document_number); all.push(d); }
+    }
+  }
+  return all;
+}
+
+async function gatherSpendingOverTime(type: 'recipient' | 'agency' | 'person', name: string) {
+  const endDate = new Date().toISOString().split('T')[0];
+  const filters: Record<string, unknown> = {
+    award_type_codes: ['A', 'B', 'C', 'D', '02', '03', '04', '05'],
+    time_period: [{ start_date: '2018-01-01', end_date: endDate }],
+  };
+  if (type === 'recipient') filters.recipient_search_text = [name];
+  else if (type === 'agency') filters.agencies = [{ type: 'awarding', tier: 'toptier', name }];
+  else filters.keywords = [name];
+  return getSpendingOverTime(filters).catch(() => []);
+}
+
+async function buildAnalysis(type: 'recipient' | 'agency' | 'person', name: string) {
+  // All data sources run in parallel
+  const [awards, fedRegDocs, spendingOverTime, profile] = await Promise.all([
+    gatherAwards(type, name),
+    gatherFedRegDocs(name),
+    gatherSpendingOverTime(type, name),
+    type === 'recipient' ? fetchRecipientProfile(name).catch(() => null) : Promise.resolve(null),
+  ]);
+
+  const analysis = analyzeEntity(name, type, awards as Parameters<typeof analyzeEntity>[2], fedRegDocs);
+
+  return {
+    ...analysis,
+    spendingOverTime,
+    profile,
+    sourcesQueried: [
+      'USASpending.gov — Federal Contracts & Grants',
+      'FederalRegister.gov — Regulatory & Legal Records',
+      ...(profile ? ['USASpending.gov Recipient Profile'] : []),
+    ],
+  };
+}
+
 router.get('/recipient/:name', async (req: Request, res: Response) => {
   const name = decodeURIComponent(req.params.name);
-  try {
-    const [byRecipient, byKeyword, soleSource] = await Promise.allSettled([
-      searchAwardsByRecipient(name, 1, 100),
-      searchAwardsByKeyword(name, 1, 50),
-      getSoleSourceAwards(name, 50),
-    ]);
-
-    const recipientAwards =
-      byRecipient.status === 'fulfilled' ? byRecipient.value.results : [];
-    const keywordAwards =
-      byKeyword.status === 'fulfilled' ? byKeyword.value.results : [];
-    const soleSourceAwards =
-      soleSource.status === 'fulfilled' ? soleSource.value : [];
-
-    const seenIds = new Set<string>();
-    const allAwards = [...recipientAwards, ...keywordAwards, ...soleSourceAwards].filter(
-      (a) => {
-        if (seenIds.has(a['Award ID'])) return false;
-        seenIds.add(a['Award ID']);
-        return true;
-      }
-    );
-
-    const spendingOverTime = await getSpendingOverTime({
-      recipient_search_text: [name],
-      award_type_codes: ['A', 'B', 'C', 'D', '02', '03', '04', '05'],
-      time_period: [{ start_date: '2018-01-01', end_date: new Date().toISOString().split('T')[0] }],
-    }).catch(() => []);
-
-    const analysis = analyzeEntity(name, 'recipient', allAwards);
-
-    res.json({ ...analysis, spendingOverTime });
-  } catch (err) {
-    console.error('Recipient analysis error:', err);
-    res.status(502).json({ error: 'Failed to analyze recipient.' });
-  }
+  try { res.json(await buildAnalysis('recipient', name)); }
+  catch (e) { console.error(e); res.status(502).json({ error: 'Failed to analyze recipient.' }); }
 });
 
 router.get('/agency/:name', async (req: Request, res: Response) => {
   const name = decodeURIComponent(req.params.name);
-  try {
-    const [byAgency, byKeyword, soleSource] = await Promise.allSettled([
-      searchAwardsByAgency(name, 1, 100),
-      searchAwardsByKeyword(name, 1, 50),
-      getSoleSourceAwards(name, 30),
-    ]);
-
-    const agencyAwards =
-      byAgency.status === 'fulfilled' ? byAgency.value.results : [];
-    const keywordAwards =
-      byKeyword.status === 'fulfilled' ? byKeyword.value.results : [];
-    const soleSourceAwards =
-      soleSource.status === 'fulfilled' ? soleSource.value : [];
-
-    const seenIds = new Set<string>();
-    const allAwards = [...agencyAwards, ...keywordAwards, ...soleSourceAwards].filter(
-      (a) => {
-        if (seenIds.has(a['Award ID'])) return false;
-        seenIds.add(a['Award ID']);
-        return true;
-      }
-    );
-
-    const spendingOverTime = await getSpendingOverTime({
-      agencies: [{ type: 'awarding', tier: 'toptier', name }],
-      award_type_codes: ['A', 'B', 'C', 'D'],
-      time_period: [{ start_date: '2018-01-01', end_date: new Date().toISOString().split('T')[0] }],
-    }).catch(() => []);
-
-    const analysis = analyzeEntity(name, 'agency', allAwards);
-    res.json({ ...analysis, spendingOverTime });
-  } catch (err) {
-    console.error('Agency analysis error:', err);
-    res.status(502).json({ error: 'Failed to analyze agency.' });
-  }
+  try { res.json(await buildAnalysis('agency', name)); }
+  catch (e) { console.error(e); res.status(502).json({ error: 'Failed to analyze agency.' }); }
 });
 
 router.get('/person/:name', async (req: Request, res: Response) => {
   const name = decodeURIComponent(req.params.name);
-  try {
-    const [keywordResult, soleSource] = await Promise.allSettled([
-      searchAwardsByKeyword(name, 1, 100),
-      getSoleSourceAwards(name, 50),
-    ]);
-
-    const keywordAwards =
-      keywordResult.status === 'fulfilled' ? keywordResult.value.results : [];
-    const soleSourceAwards =
-      soleSource.status === 'fulfilled' ? soleSource.value : [];
-
-    const seenIds = new Set<string>();
-    const allAwards = [...keywordAwards, ...soleSourceAwards].filter((a) => {
-      if (seenIds.has(a['Award ID'])) return false;
-      seenIds.add(a['Award ID']);
-      return true;
-    });
-
-    const spendingOverTime = await getSpendingOverTime({
-      keywords: [name],
-      award_type_codes: ['A', 'B', 'C', 'D', '02', '03', '04', '05'],
-      time_period: [{ start_date: '2018-01-01', end_date: new Date().toISOString().split('T')[0] }],
-    }).catch(() => []);
-
-    const analysis = analyzeEntity(name, 'person', allAwards);
-    res.json({ ...analysis, spendingOverTime });
-  } catch (err) {
-    console.error('Person analysis error:', err);
-    res.status(502).json({ error: 'Failed to analyze person/keyword.' });
-  }
+  try { res.json(await buildAnalysis('person', name)); }
+  catch (e) { console.error(e); res.status(502).json({ error: 'Failed to analyze person/keyword.' }); }
 });
 
 export default router;

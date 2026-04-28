@@ -25,6 +25,8 @@ export interface Evidence {
   sourceUrl: string;
   sourceLabel: string;
   severity: 'low' | 'medium' | 'high' | 'critical';
+  confidence?: number;
+  sources?: string[];
 }
 
 export interface RiskFactor {

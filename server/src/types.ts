@@ -12,18 +12,8 @@ export interface Award {
   'Extent Competed'?: string;
   'Number of Offers Received'?: number;
   'Place of Performance State Code'?: string;
+  'Type of Contract Pricing'?: string;
   internal_id?: string;
-}
-
-export interface SearchResult {
-  results: Award[];
-  page_metadata: {
-    page: number;
-    hasNext: boolean;
-    hasPrevious: boolean;
-    total: number;
-    limit: number;
-  };
 }
 
 export interface Evidence {
@@ -36,6 +26,8 @@ export interface Evidence {
   sourceUrl: string;
   sourceLabel: string;
   severity: 'low' | 'medium' | 'high' | 'critical';
+  confidence?: number;   // 0-100 — how certain is this finding
+  sources?: string[];    // which data sources confirm this
 }
 
 export interface RiskFactor {
