@@ -1,6 +1,7 @@
 import express from 'express';
 import cors from 'cors';
 import path from 'path';
+import fs from 'fs';
 import rateLimit from 'express-rate-limit';
 import searchRouter from './routes/search';
 import analysisRouter from './routes/analysis';
@@ -8,18 +9,10 @@ import investigateRouter from './routes/investigate';
 
 const app = express();
 const PORT = process.env.PORT || 3001;
-const isProd = process.env.NODE_ENV === 'production';
 
-// In production allow all origins (Railway reverse-proxies the domain).
-// In dev allow local Vite dev server.
-app.use(
-  cors(
-    isProd
-      ? {}
-      : { origin: ['http://localhost:5173', 'http://localhost:3000'] }
-  )
-);
-
+// Allow all origins — Railway reverse-proxies behind the custom domain.
+// In local dev the Vite proxy handles /api calls so CORS isn't needed there either.
+app.use(cors());
 app.use(express.json());
 
 const limiter = rateLimit({
@@ -37,20 +30,24 @@ app.get('/api/health', (_req, res) => {
   res.json({ status: 'ok', timestamp: new Date().toISOString() });
 });
 
-// Serve the built React app in production.
-// __dirname in compiled JS = server/dist — so client/dist is two levels up.
+// Serve the built React app whenever the dist folder exists.
+// Works in both Railway (NODE_ENV=production) and any other deployment.
+// __dirname = server/dist  →  ../../client/dist = repo root / client / dist
 const clientDist = path.join(__dirname, '..', '..', 'client', 'dist');
 
-if (isProd) {
+if (fs.existsSync(clientDist)) {
+  console.log(`Serving static files from ${clientDist}`);
   app.use(express.static(clientDist));
-  // All non-API routes return the React app (SPA client-side routing).
+  // SPA fallback — all non-API routes return index.html
   app.get('*', (_req, res) => {
     res.sendFile(path.join(clientDist, 'index.html'));
   });
+} else {
+  console.log('No client/dist found — running API-only (dev mode)');
 }
 
 app.listen(PORT, () => {
-  console.log(`PaperTrail server running on http://localhost:${PORT} [${isProd ? 'production' : 'development'}]`);
+  console.log(`PaperTrail running on http://localhost:${PORT}`);
 });
 
 export default app;
