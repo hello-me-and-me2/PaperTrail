@@ -1,159 +1,250 @@
-import { Shield, TrendingUp, FileSearch, AlertTriangle, ExternalLink, Crosshair } from 'lucide-react';
+import { Shield, TrendingUp, FileSearch, AlertTriangle, Lock, Building2, Landmark, Users, Crosshair, BarChart3 } from 'lucide-react';
 import { Link } from 'react-router-dom';
 import SearchBar from '../components/SearchBar';
 
-const EXAMPLES = [
-  { label: 'Lockheed Martin', type: 'recipient' as const },
-  { label: 'Boeing', type: 'recipient' as const },
-  { label: 'Raytheon', type: 'recipient' as const },
-  { label: 'Department of Defense', type: 'agency' as const },
-  { label: 'Booz Allen Hamilton', type: 'recipient' as const },
-  { label: 'SAIC', type: 'recipient' as const },
+const TRAIL_DOTS: [number, number][] = [
+  [38, 158], [50, 138], [62, 120], [76, 103], [90, 88],
+  [106, 72], [122, 57], [140, 43], [158, 28],
+];
+
+const GRASS_TUFTS: [number, number, number, number][] = [
+  [44, 150, 44, 143], [48, 152, 52, 145],
+  [74, 110, 72, 103], [78, 111, 82, 104],
+  [108, 78, 106, 71], [112, 79, 116, 72],
 ];
 
 const FEATURES = [
   {
     icon: FileSearch,
-    title: 'Search Anything',
-    desc: 'Search any person, company, agency, or topic. AI scours news, court records, federal databases, and regulatory filings simultaneously.',
-    color: 'text-blue-400',
-    bg: 'bg-blue-950',
+    title: 'Connect Any Data Source',
+    desc: 'Link payment systems, ERP exports, procurement records, expense reports, and vendor contracts. AI works across structured and unstructured formats.',
+    color: 'text-blue-600',
+    bg: 'bg-blue-50',
+    border: 'border-blue-100',
   },
   {
     icon: AlertTriangle,
-    title: 'AI Risk Analysis',
-    desc: 'Claude Opus 4.7 synthesizes all gathered evidence to score corruption risk across no-bid contracts, fraud patterns, revolving door relationships, and more.',
-    color: 'text-red-400',
-    bg: 'bg-red-950',
+    title: 'AI Corruption Analysis',
+    desc: 'Claude Opus 4.7 synthesizes your internal data with public debarment lists, news investigations, and court records to surface patterns humans miss.',
+    color: 'text-red-600',
+    bg: 'bg-red-50',
+    border: 'border-red-100',
   },
   {
     icon: Shield,
-    title: 'Multi-Source Verified',
-    desc: 'Every finding is cross-referenced across USASpending.gov, Federal Register, news investigations, and court records — confidence scores show how many sources agree.',
-    color: 'text-green-400',
-    bg: 'bg-green-950',
+    title: 'Multi-Source Verification',
+    desc: 'Every finding is cross-referenced across internal records, USASpending.gov, Federal Register, and live news — confidence scores show agreement across sources.',
+    color: 'text-green-600',
+    bg: 'bg-green-50',
+    border: 'border-green-100',
   },
   {
-    icon: TrendingUp,
-    title: 'Deep Research',
-    desc: 'AI identifies responsible parties, uncovers historical patterns, and connects the dots across organizations — far beyond simple keyword searches.',
-    color: 'text-purple-400',
-    bg: 'bg-purple-950',
+    icon: BarChart3,
+    title: 'Audit-Ready Reports',
+    desc: 'Structured risk reports with responsible parties, evidence chains, and severity ratings — formatted for compliance officers, auditors, and legal teams.',
+    color: 'text-purple-600',
+    bg: 'bg-purple-50',
+    border: 'border-purple-100',
   },
 ];
 
+const WHO = [
+  {
+    icon: Building2,
+    label: 'Corporations & Enterprises',
+    desc: 'Detect vendor fraud, procurement irregularities, and expense abuse before external audits surface them.',
+  },
+  {
+    icon: Landmark,
+    label: 'Government Agencies',
+    desc: 'Monitor grant recipients, contractor compliance, and internal spending anomalies in real time.',
+  },
+  {
+    icon: Users,
+    label: 'Law Firms & Auditors',
+    desc: 'AI-accelerated forensic accounting — analyze years of records in minutes, not months.',
+  },
+];
+
+const PAPER_BG: React.CSSProperties = {
+  backgroundColor: '#fdf8ef',
+  backgroundImage: [
+    'radial-gradient(ellipse 90% 55% at 22% 20%, rgba(255,255,255,0.42) 0%, transparent 70%)',
+    'radial-gradient(ellipse 60% 45% at 78% 68%, rgba(0,0,0,0.022) 0%, transparent 70%)',
+    'radial-gradient(ellipse 45% 35% at 8% 82%, rgba(255,255,255,0.28) 0%, transparent 60%)',
+    'radial-gradient(ellipse 40% 30% at 92% 12%, rgba(0,0,0,0.018) 0%, transparent 60%)',
+    'linear-gradient(90deg, transparent 70px, rgba(244,164,164,0.5) 70px, rgba(244,164,164,0.5) 72px, transparent 72px)',
+    'repeating-linear-gradient(180deg, transparent 0, transparent 27px, rgba(180,210,245,0.62) 27px, rgba(180,210,245,0.62) 28.5px)',
+  ].join(', '),
+};
+
 export default function Home() {
   return (
-    <div className="min-h-screen bg-dark-900">
+    <div className="min-h-screen" style={PAPER_BG}>
+      {/* ── Hero ── */}
       <div className="relative overflow-hidden">
-        {/* Supreme Court background */}
-        <div
-          className="absolute inset-0"
-          style={{
-            backgroundImage: 'url(https://images.unsplash.com/photo-1589829085413-56de8ae18c73?auto=format&fit=crop&w=1920&q=80)',
-            backgroundSize: 'cover',
-            backgroundPosition: 'center top',
-          }}
-        />
-        {/* Dark gradient overlay so text stays readable */}
-        <div className="absolute inset-0 bg-gradient-to-b from-dark-900/80 via-dark-900/70 to-dark-900" />
-        <div className="absolute inset-0 pointer-events-none">
-          <div className="absolute top-0 left-1/4 w-96 h-96 bg-accent/5 rounded-full blur-3xl" />
-        </div>
+        {/* Hand-drawn trail doodle — bottom-right corner of hero */}
+        <svg
+          viewBox="0 0 200 185"
+          className="absolute bottom-0 right-4 sm:right-14 w-32 sm:w-44 opacity-[0.19] pointer-events-none select-none"
+          xmlns="http://www.w3.org/2000/svg"
+        >
+          <path
+            d="M 30 175 C 40 155 25 132 55 117 S 82 90 92 74 S 122 52 142 37 S 168 20 178 10"
+            fill="none"
+            stroke="#6b4f2a"
+            strokeWidth="2.5"
+            strokeDasharray="6,5"
+            strokeLinecap="round"
+          />
+          {TRAIL_DOTS.map(([cx, cy], i) => (
+            <circle key={i} cx={cx} cy={cy} r="2.5" fill="#6b4f2a" />
+          ))}
+          {/* Start circle */}
+          <circle cx="30" cy="175" r="5" fill="none" stroke="#6b4f2a" strokeWidth="2" />
+          {/* Destination star */}
+          <path
+            d="M178 4 L180 9 L185 9 L181 13 L183 18 L178 15 L173 18 L175 13 L171 9 L176 9 Z"
+            fill="#6b4f2a"
+            opacity="0.7"
+          />
+          {/* Grass tufts alongside the trail */}
+          {GRASS_TUFTS.map(([x1, y1, x2, y2], i) => (
+            <line key={i} x1={x1} y1={y1} x2={x2} y2={y2} stroke="#5a7a3a" strokeWidth="1.5" strokeLinecap="round" />
+          ))}
+        </svg>
 
         <div className="relative max-w-4xl mx-auto px-4 pt-20 pb-16 text-center">
-          <div className="inline-flex items-center gap-2 bg-dark-700 border border-dark-500 rounded-full px-3 py-1.5 text-xs text-slate-400 mb-6">
-            <span className="w-1.5 h-1.5 bg-green-400 rounded-full animate-pulse" />
-            AI-powered · USASpending.gov · Federal Register · News &amp; Court Records
+          <div className="inline-flex items-center gap-2 bg-white/70 border border-blue-100 rounded-full px-3 py-1.5 text-xs text-slate-600 mb-6 shadow-sm">
+            <Lock className="w-3 h-3 text-blue-500" />
+            Enterprise · Private · AI-Powered
           </div>
 
-          <h1 className="text-5xl sm:text-6xl font-bold text-white mb-4 tracking-tight leading-tight">
-            Follow the{' '}
-            <span className="text-accent">PaperTrail</span>
+          <h1 className="text-5xl sm:text-6xl font-bold text-slate-900 mb-4 tracking-tight leading-tight">
+            Detect Corruption.
+            <br className="hidden sm:block" />
+            Follow the <span className="text-accent">PaperTrail.</span>
           </h1>
-          <p className="text-lg text-slate-400 mb-10 max-w-2xl mx-auto leading-relaxed">
-            Analyze federal government spending to surface no-bid contracts, award concentration, and
-            patterns of potential mismanagement — all backed by official public records.
+
+          <p className="text-lg text-slate-600 mb-10 max-w-2xl mx-auto leading-relaxed">
+            AI-powered internal corruption detection for corporations, agencies, and organizations.
+            Give us access to your payment records, vendor contracts, and business logs — our AI
+            finds fraud patterns, kickback schemes, and financial misconduct before they become scandals.
           </p>
 
           <div className="flex justify-center mb-4">
             <SearchBar autoFocus />
           </div>
 
-          <div className="flex justify-center mb-6">
+          <div className="flex justify-center">
             <Link
               to="/investigate"
-              className="flex items-center gap-2 bg-dark-700 hover:bg-dark-600 border border-dark-500 hover:border-accent/50 text-slate-300 hover:text-white text-sm font-medium px-5 py-2.5 rounded-xl transition-all"
+              className="flex items-center gap-2 bg-white/70 hover:bg-white border border-slate-200 hover:border-accent/40 text-slate-700 hover:text-accent text-sm font-medium px-5 py-2.5 rounded-xl transition-all shadow-sm"
             >
               <Crosshair className="w-4 h-4 text-accent" />
-              Investigate multiple targets simultaneously
-              <span className="text-xs bg-accent/20 text-accent rounded-full px-2 py-0.5">AI</span>
+              Multi-target investigation
+              <span className="text-xs bg-accent/10 text-accent rounded-full px-2 py-0.5">AI</span>
             </Link>
-          </div>
-
-          <div className="flex flex-wrap justify-center gap-2">
-            <span className="text-xs text-slate-600">Try:</span>
-            {EXAMPLES.map((ex) => (
-              <a
-                key={ex.label}
-                href={`/analysis/${ex.type}/${encodeURIComponent(ex.label)}`}
-                className="text-xs text-slate-500 hover:text-accent transition-colors border border-dark-500 hover:border-accent/40 rounded-full px-3 py-1"
-              >
-                {ex.label}
-              </a>
-            ))}
           </div>
         </div>
       </div>
 
+      {/* ── Feature cards ── */}
       <div className="max-w-5xl mx-auto px-4 pb-16">
         <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4 mb-16">
           {FEATURES.map((f) => {
             const Icon = f.icon;
             return (
-              <div key={f.title} className="card p-5">
+              <div key={f.title} className={`bg-white/80 border ${f.border} rounded-xl p-5 shadow-sm`}>
                 <div className={`w-9 h-9 rounded-lg ${f.bg} flex items-center justify-center mb-3`}>
                   <Icon className={`w-4.5 h-4.5 ${f.color}`} />
                 </div>
-                <h3 className="font-semibold text-white mb-1.5 text-sm">{f.title}</h3>
+                <h3 className="font-semibold text-slate-800 mb-1.5 text-sm">{f.title}</h3>
                 <p className="text-xs text-slate-500 leading-relaxed">{f.desc}</p>
               </div>
             );
           })}
         </div>
 
-        <div className="card p-6">
-          <div className="flex items-start gap-3">
-            <AlertTriangle className="w-5 h-5 text-yellow-500 shrink-0 mt-0.5" />
-            <div>
-              <h3 className="font-semibold text-white mb-1">How Risk Scores Work</h3>
-              <p className="text-sm text-slate-400 leading-relaxed mb-3">
-                PaperTrail analyzes publicly available federal spending data and applies objective criteria to generate risk scores.
-                A high score does <strong className="text-white">not</strong> constitute proof of illegal activity — it flags patterns
-                that warrant scrutiny by oversight authorities, journalists, and the public.
-              </p>
-              <div className="grid grid-cols-2 sm:grid-cols-4 gap-3 text-xs">
-                {[
-                  { level: 'CRITICAL', cls: 'bg-red-950 text-red-400 border-red-800', desc: '75–100: Severe red flags' },
-                  { level: 'HIGH',     cls: 'bg-orange-950 text-orange-400 border-orange-800', desc: '50–74: Significant concerns' },
-                  { level: 'MODERATE', cls: 'bg-yellow-950 text-yellow-400 border-yellow-800', desc: '25–49: Some irregularities' },
-                  { level: 'LOW',      cls: 'bg-green-950 text-green-400 border-green-800', desc: '0–24: Few anomalies' },
-                ].map((r) => (
-                  <div key={r.level} className={`border rounded-lg p-2.5 ${r.cls}`}>
-                    <p className="font-mono font-bold mb-0.5">{r.level}</p>
-                    <p className="opacity-70">{r.desc}</p>
+        {/* ── Who uses it ── */}
+        <div className="mb-16">
+          <h2 className="text-center text-xl font-bold text-slate-800 mb-2">
+            Built for Organizations That Need Answers
+          </h2>
+          <p className="text-center text-sm text-slate-500 mb-8">
+            PaperTrail contracts with organizations to provide private, AI-powered corruption detection on their own data.
+          </p>
+          <div className="grid grid-cols-1 sm:grid-cols-3 gap-4">
+            {WHO.map((w) => {
+              const Icon = w.icon;
+              return (
+                <div key={w.label} className="bg-white/70 border border-slate-200 rounded-xl p-5 shadow-sm text-center">
+                  <div className="w-10 h-10 bg-slate-100 rounded-xl flex items-center justify-center mx-auto mb-3">
+                    <Icon className="w-5 h-5 text-slate-600" />
                   </div>
-                ))}
-              </div>
-              <div className="mt-4 flex items-center gap-2 text-xs text-slate-500">
-                <ExternalLink className="w-3 h-3" />
-                <span>All data sourced from </span>
-                <a href="https://www.usaspending.gov" target="_blank" rel="noopener noreferrer"
-                  className="text-accent hover:underline">usaspending.gov</a>
-                <span>— Official U.S. government open data portal.</span>
-              </div>
-            </div>
+                  <h3 className="font-semibold text-slate-800 mb-1 text-sm">{w.label}</h3>
+                  <p className="text-xs text-slate-500 leading-relaxed">{w.desc}</p>
+                </div>
+              );
+            })}
           </div>
+        </div>
+
+        {/* ── How it works + risk levels ── */}
+        <div className="bg-white/70 border border-slate-200 rounded-xl p-6 shadow-sm">
+          <h2 className="font-bold text-slate-800 mb-5 flex items-center gap-2">
+            <TrendingUp className="w-5 h-5 text-accent" />
+            How Risk Analysis Works
+          </h2>
+
+          <div className="grid grid-cols-1 sm:grid-cols-3 gap-6 mb-6">
+            {[
+              {
+                step: '1',
+                title: 'Connect Your Data',
+                desc: 'Securely provide payment records, vendor lists, ERP exports, and business logs for AI analysis.',
+              },
+              {
+                step: '2',
+                title: 'AI Scans Everything',
+                desc: 'Claude Opus 4.7 cross-references your data against public debarment lists, news investigations, and court records simultaneously.',
+              },
+              {
+                step: '3',
+                title: 'Receive Risk Reports',
+                desc: 'Prioritized findings with responsible parties, flagged transactions, and evidence chains — ready for auditors and legal teams.',
+              },
+            ].map((s) => (
+              <div key={s.step} className="flex gap-3">
+                <div className="w-7 h-7 rounded-full bg-accent text-white text-xs font-bold flex items-center justify-center shrink-0 mt-0.5">
+                  {s.step}
+                </div>
+                <div>
+                  <h3 className="font-semibold text-slate-800 text-sm mb-1">{s.title}</h3>
+                  <p className="text-xs text-slate-500 leading-relaxed">{s.desc}</p>
+                </div>
+              </div>
+            ))}
+          </div>
+
+          <div className="grid grid-cols-2 sm:grid-cols-4 gap-3 text-xs">
+            {[
+              { level: 'CRITICAL', cls: 'bg-red-50 text-red-600 border-red-200',          desc: '75–100: Severe red flags' },
+              { level: 'HIGH',     cls: 'bg-orange-50 text-orange-600 border-orange-200', desc: '50–74: Significant concerns' },
+              { level: 'MODERATE', cls: 'bg-yellow-50 text-yellow-600 border-yellow-200', desc: '25–49: Some irregularities' },
+              { level: 'LOW',      cls: 'bg-green-50 text-green-600 border-green-200',    desc: '0–24: Few anomalies' },
+            ].map((r) => (
+              <div key={r.level} className={`border rounded-lg p-2.5 ${r.cls}`}>
+                <p className="font-mono font-bold mb-0.5">{r.level}</p>
+                <p className="opacity-70">{r.desc}</p>
+              </div>
+            ))}
+          </div>
+
+          <p className="text-xs text-slate-400 mt-4 leading-relaxed">
+            <strong className="text-slate-500">Disclaimer:</strong> Risk scores reflect objective pattern analysis using public and provided data.
+            A high score indicates anomalous patterns, not proven wrongdoing. Consult official IG reports or legal counsel for final determinations.
+          </p>
         </div>
       </div>
     </div>

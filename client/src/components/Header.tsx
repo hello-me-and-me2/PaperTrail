@@ -1,5 +1,5 @@
 import { Link, useLocation, useNavigate } from 'react-router-dom';
-import { Search, FileText, AlertTriangle, Crosshair, LogOut, ShieldCheck } from 'lucide-react';
+import { FileText, Crosshair, LogOut, ShieldCheck } from 'lucide-react';
 import { useAuth } from '../contexts/AuthContext';
 
 export default function Header() {
@@ -7,7 +7,6 @@ export default function Header() {
   const navigate = useNavigate();
   const { user, logout } = useAuth();
 
-  const isHome = location.pathname === '/';
   const isInvestigate = location.pathname === '/investigate';
 
   function handleLogout() {
@@ -29,8 +28,8 @@ export default function Header() {
         </Link>
 
         <div className="hidden sm:flex items-center gap-1 text-xs text-slate-500">
-          <AlertTriangle className="w-3 h-3 text-yellow-600" />
-          <span>Data: USASpending.gov — Federal Open Data</span>
+          <span className="w-1.5 h-1.5 rounded-full bg-green-400 inline-block" />
+          <span>Enterprise Corruption Detection Platform</span>
         </div>
 
         <div className="flex items-center gap-2">
@@ -46,16 +45,6 @@ export default function Header() {
             <span className="hidden sm:inline">Investigate</span>
           </Link>
 
-          {!isHome && !isInvestigate && (
-            <Link
-              to="/"
-              className="flex items-center gap-1.5 text-sm text-slate-400 hover:text-white transition-colors px-2"
-            >
-              <Search className="w-4 h-4" />
-            </Link>
-          )}
-
-          {/* User badge */}
           {user && (
             <div className="flex items-center gap-2 pl-2 border-l border-dark-500">
               <div className="hidden sm:flex items-center gap-1.5">

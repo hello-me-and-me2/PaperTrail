@@ -45,7 +45,7 @@ export default function Login() {
 
         <div className="bg-dark-700 border border-dark-500 rounded-2xl p-8 shadow-2xl">
           <h1 className="text-xl font-bold text-white mb-1">Sign in</h1>
-          <p className="text-sm text-slate-500 mb-6">Access the government spending analyzer</p>
+          <p className="text-sm text-slate-500 mb-6">Access your organization's PaperTrail account</p>
 
           {error && (
             <div className="flex items-center gap-2 bg-red-950/50 border border-red-800 text-red-400 rounded-lg px-3 py-2.5 text-sm mb-5">
