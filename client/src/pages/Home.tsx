@@ -1,6 +1,7 @@
-import { Shield, TrendingUp, FileSearch, AlertTriangle, Lock, Building2, Landmark, Users, Crosshair, BarChart3 } from 'lucide-react';
+import { Shield, TrendingUp, FileSearch, AlertTriangle, Lock, Building2, Landmark, Users, Crosshair, BarChart3, ArrowRight } from 'lucide-react';
 import { Link } from 'react-router-dom';
 import SearchBar from '../components/SearchBar';
+import { useAuth } from '../contexts/AuthContext';
 
 const TRAIL_DOTS: [number, number][] = [
   [38, 158], [50, 138], [62, 120], [76, 103], [90, 88],
@@ -78,7 +79,24 @@ const PAPER_BG: React.CSSProperties = {
   ].join(', '),
 };
 
+const ORG_TYPE_ANALYSIS: Record<string, 'recipient' | 'agency' | 'person'> = {
+  government_agency: 'agency',
+  organization: 'recipient',
+  company: 'recipient',
+};
+
+const ORG_TYPE_LABELS: Record<string, string> = {
+  government_agency: 'Government Agency',
+  organization: 'Organization',
+  company: 'Company',
+};
+
 export default function Home() {
+  const { user } = useAuth();
+  const orgName = user?.orgDisplayName ?? user?.orgName ?? '';
+  const orgType = user?.orgType ?? '';
+  const analysisType = ORG_TYPE_ANALYSIS[orgType] ?? 'recipient';
+
   return (
     <div className="min-h-screen" style={PAPER_BG}>
       {/* ── Hero ── */}
@@ -100,52 +118,79 @@ export default function Home() {
           {TRAIL_DOTS.map(([cx, cy], i) => (
             <circle key={i} cx={cx} cy={cy} r="2.5" fill="#6b4f2a" />
           ))}
-          {/* Start circle */}
           <circle cx="30" cy="175" r="5" fill="none" stroke="#6b4f2a" strokeWidth="2" />
-          {/* Destination star */}
           <path
             d="M178 4 L180 9 L185 9 L181 13 L183 18 L178 15 L173 18 L175 13 L171 9 L176 9 Z"
             fill="#6b4f2a"
             opacity="0.7"
           />
-          {/* Grass tufts alongside the trail */}
           {GRASS_TUFTS.map(([x1, y1, x2, y2], i) => (
             <line key={i} x1={x1} y1={y1} x2={x2} y2={y2} stroke="#5a7a3a" strokeWidth="1.5" strokeLinecap="round" />
           ))}
         </svg>
 
         <div className="relative max-w-4xl mx-auto px-4 pt-20 pb-16 text-center">
+          {/* Org badge */}
           <div className="inline-flex items-center gap-2 bg-white/70 border border-blue-100 rounded-full px-3 py-1.5 text-xs text-slate-600 mb-6 shadow-sm">
             <Lock className="w-3 h-3 text-blue-500" />
-            Enterprise · Private · AI-Powered
+            {orgType ? ORG_TYPE_LABELS[orgType] : 'Enterprise'} · Private · AI-Powered
           </div>
 
           <h1 className="text-5xl sm:text-6xl font-bold text-slate-900 mb-4 tracking-tight leading-tight">
-            Detect Corruption.
-            <br className="hidden sm:block" />
-            Follow the <span className="text-accent">PaperTrail.</span>
+            {orgName ? (
+              <>Corruption Monitor for<br /><span className="text-accent">{orgName}</span></>
+            ) : (
+              <>Detect Corruption.<br />Follow the <span className="text-accent">PaperTrail.</span></>
+            )}
           </h1>
 
-          <p className="text-lg text-slate-600 mb-10 max-w-2xl mx-auto leading-relaxed">
-            AI-powered internal corruption detection for corporations, agencies, and organizations.
-            Give us access to your payment records, vendor contracts, and business logs — our AI
-            finds fraud patterns, kickback schemes, and financial misconduct before they become scandals.
+          <p className="text-lg text-slate-600 mb-8 max-w-2xl mx-auto leading-relaxed">
+            {orgName
+              ? `AI is scanning vendors, contractors, and financial patterns associated with ${orgName} for signs of corruption, fraud, and mismanagement.`
+              : 'AI-powered internal corruption detection. Connect your payment records, vendor contracts, and business logs — our AI finds fraud patterns before they become scandals.'
+            }
           </p>
 
+          {/* Primary CTAs when org is set */}
+          {orgName && (
+            <div className="flex flex-wrap justify-center gap-3 mb-8">
+              <Link
+                to={`/analysis/${analysisType}/${encodeURIComponent(orgName)}`}
+                className="flex items-center gap-2 bg-accent hover:bg-blue-600 text-white font-semibold px-5 py-3 rounded-xl transition-colors shadow-sm text-sm"
+              >
+                <ArrowRight className="w-4 h-4" />
+                Analyze {orgName}
+              </Link>
+              <Link
+                to="/investigate"
+                className="flex items-center gap-2 bg-white/70 hover:bg-white border border-slate-200 hover:border-accent/40 text-slate-700 hover:text-accent text-sm font-medium px-5 py-3 rounded-xl transition-all shadow-sm"
+              >
+                <Crosshair className="w-4 h-4 text-accent" />
+                Investigate {orgName} Network
+              </Link>
+            </div>
+          )}
+
+          {/* Search for specific vendors/contractors */}
+          <p className="text-xs text-slate-500 mb-2">
+            {orgName ? 'Or search a specific vendor, contractor, or person:' : 'Search a vendor, contractor, or entity:'}
+          </p>
           <div className="flex justify-center mb-4">
-            <SearchBar autoFocus />
+            <SearchBar autoFocus={!orgName} />
           </div>
 
-          <div className="flex justify-center">
-            <Link
-              to="/investigate"
-              className="flex items-center gap-2 bg-white/70 hover:bg-white border border-slate-200 hover:border-accent/40 text-slate-700 hover:text-accent text-sm font-medium px-5 py-2.5 rounded-xl transition-all shadow-sm"
-            >
-              <Crosshair className="w-4 h-4 text-accent" />
-              Multi-target investigation
-              <span className="text-xs bg-accent/10 text-accent rounded-full px-2 py-0.5">AI</span>
-            </Link>
-          </div>
+          {!orgName && (
+            <div className="flex justify-center">
+              <Link
+                to="/investigate"
+                className="flex items-center gap-2 bg-white/70 hover:bg-white border border-slate-200 hover:border-accent/40 text-slate-700 hover:text-accent text-sm font-medium px-5 py-2.5 rounded-xl transition-all shadow-sm"
+              >
+                <Crosshair className="w-4 h-4 text-accent" />
+                Multi-target investigation
+                <span className="text-xs bg-accent/10 text-accent rounded-full px-2 py-0.5">AI</span>
+              </Link>
+            </div>
+          )}
         </div>
       </div>
 

@@ -8,6 +8,7 @@ import authRouter from './routes/auth';
 import searchRouter from './routes/search';
 import analysisRouter from './routes/analysis';
 import investigateRouter from './routes/investigate';
+import orgRouter from './routes/org';
 
 const app = express();
 const PORT = process.env.PORT || 3001;
@@ -26,6 +27,7 @@ app.use('/api/auth', authRouter);
 app.use('/api/search', searchRouter);
 app.use('/api/analysis', analysisRouter);
 app.use('/api/investigate', investigateRouter);
+app.use('/api/org', orgRouter);
 
 app.get('/api/health', (_req, res) => {
   res.json({ status: 'ok', timestamp: new Date().toISOString() });

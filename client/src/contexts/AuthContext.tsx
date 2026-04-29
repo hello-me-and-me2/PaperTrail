@@ -5,6 +5,10 @@ export interface AuthUser {
   id: number;
   email: string;
   role: 'user' | 'admin';
+  orgName: string | null;
+  orgType: string | null;
+  orgDisplayName: string | null;
+  onboardingComplete: boolean;
 }
 
 interface AuthState {
@@ -17,11 +21,16 @@ interface AuthContextValue extends AuthState {
   login: (email: string, password: string) => Promise<void>;
   signup: (email: string, password: string) => Promise<void>;
   logout: () => void;
+  completeOnboarding: (data: { org_name: string; org_type: string; org_display_name: string }) => Promise<void>;
 }
 
 const AuthContext = createContext<AuthContextValue | null>(null);
 
 const TOKEN_KEY = 'pt_token';
+
+function authHeader(token: string) {
+  return { Authorization: `Bearer ${token}` };
+}
 
 export function AuthProvider({ children }: { children: ReactNode }) {
   const [state, setState] = useState<AuthState>({ user: null, token: null, loading: true });
@@ -30,7 +39,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     const stored = localStorage.getItem(TOKEN_KEY);
     if (!stored) { setState((s) => ({ ...s, loading: false })); return; }
 
-    axios.get('/api/auth/me', { headers: { Authorization: `Bearer ${stored}` } })
+    axios.get('/api/auth/me', { headers: authHeader(stored) })
       .then(({ data }) => setState({ user: data.user, token: stored, loading: false }))
       .catch(() => { localStorage.removeItem(TOKEN_KEY); setState({ user: null, token: null, loading: false }); });
   }, []);
@@ -52,7 +61,19 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     setState({ user: null, token: null, loading: false });
   }
 
-  return <AuthContext.Provider value={{ ...state, login, signup, logout }}>{children}</AuthContext.Provider>;
+  async function completeOnboarding(data: { org_name: string; org_type: string; org_display_name: string }) {
+    if (!state.token) return;
+    const { data: result } = await axios.post('/api/auth/onboarding', data, {
+      headers: authHeader(state.token),
+    });
+    setState((s) => ({ ...s, user: result.user }));
+  }
+
+  return (
+    <AuthContext.Provider value={{ ...state, login, signup, logout, completeOnboarding }}>
+      {children}
+    </AuthContext.Provider>
+  );
 }
 
 export function useAuth() {

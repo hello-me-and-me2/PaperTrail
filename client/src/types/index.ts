@@ -96,3 +96,10 @@ export interface SearchResponse {
 }
 
 export type SearchType = 'all' | 'recipient' | 'agency' | 'person';
+
+export interface OrgSuggestion {
+  name: string;
+  type: string;
+  description: string;
+  source: string;
+}
