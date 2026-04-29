@@ -9,6 +9,7 @@ export interface AuthUser {
   orgType: string | null;
   orgDisplayName: string | null;
   onboardingComplete: boolean;
+  dataSetupComplete: boolean;
 }
 
 interface AuthState {
@@ -22,6 +23,7 @@ interface AuthContextValue extends AuthState {
   signup: (email: string, password: string) => Promise<void>;
   logout: () => void;
   completeOnboarding: (data: { org_name: string; org_type: string; org_display_name: string }) => Promise<void>;
+  completeDataSetup: () => Promise<void>;
 }
 
 const AuthContext = createContext<AuthContextValue | null>(null);
@@ -38,7 +40,6 @@ export function AuthProvider({ children }: { children: ReactNode }) {
   useEffect(() => {
     const stored = localStorage.getItem(TOKEN_KEY);
     if (!stored) { setState((s) => ({ ...s, loading: false })); return; }
-
     axios.get('/api/auth/me', { headers: authHeader(stored) })
       .then(({ data }) => setState({ user: data.user, token: stored, loading: false }))
       .catch(() => { localStorage.removeItem(TOKEN_KEY); setState({ user: null, token: null, loading: false }); });
@@ -69,8 +70,16 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     setState((s) => ({ ...s, user: result.user }));
   }
 
+  async function completeDataSetup() {
+    if (!state.token) return;
+    const { data: result } = await axios.post('/api/org/complete-setup', {}, {
+      headers: authHeader(state.token),
+    });
+    setState((s) => ({ ...s, user: result.user }));
+  }
+
   return (
-    <AuthContext.Provider value={{ ...state, login, signup, logout, completeOnboarding }}>
+    <AuthContext.Provider value={{ ...state, login, signup, logout, completeOnboarding, completeDataSetup }}>
       {children}
     </AuthContext.Provider>
   );

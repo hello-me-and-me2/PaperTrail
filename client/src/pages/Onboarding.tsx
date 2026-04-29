@@ -226,6 +226,9 @@ export default function Onboarding() {
                         <div className="flex items-center gap-2 flex-wrap">
                           <span className="text-sm font-medium text-slate-800 truncate">{s.name}</span>
                           <span className="text-xs bg-slate-100 text-slate-500 rounded-full px-2 py-0.5 shrink-0">{s.type}</span>
+                          {s.industry && (
+                            <span className="text-xs bg-blue-50 text-blue-600 border border-blue-100 rounded-full px-2 py-0.5 shrink-0">{s.industry}</span>
+                          )}
                         </div>
                         {s.description && (
                           <p className="text-xs text-slate-400 mt-0.5 line-clamp-2 leading-relaxed">{s.description}</p>

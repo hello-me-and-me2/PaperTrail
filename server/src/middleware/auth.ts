@@ -28,3 +28,19 @@ export function requireAuth(req: Request, res: Response, next: NextFunction): vo
     res.status(401).json({ error: 'Invalid or expired session. Please log in again.' });
   }
 }
+
+export function optionalAuth(req: Request, _res: Response, next: NextFunction): void {
+  const header = req.headers.authorization;
+  if (!header?.startsWith('Bearer ')) {
+    next();
+    return;
+  }
+  try {
+    const token = header.slice(7);
+    const payload = jwt.verify(token, JWT_SECRET) as JwtPayload;
+    (req as any).user = payload;
+  } catch {
+    // Invalid token — continue without user
+  }
+  next();
+}

@@ -14,6 +14,7 @@ function safeUser(u: User) {
     orgType: u.org_type ?? null,
     orgDisplayName: u.org_display_name ?? null,
     onboardingComplete: u.onboarding_complete === 1,
+    dataSetupComplete: u.data_setup_complete === 1,
   };
 }
 

@@ -87,12 +87,20 @@ export interface AgencySummary {
   topRecipient: string;
 }
 
+export interface WebSearchSuggestion {
+  name: string;
+  industry: string;
+  description: string;
+  type: 'web';
+}
+
 export interface SearchResponse {
   query: string;
   recipients: RecipientSummary[];
   agencies: AgencySummary[];
   contracts: Award[];
   totalResults: number;
+  webResults?: WebSearchSuggestion[];
 }
 
 export type SearchType = 'all' | 'recipient' | 'agency' | 'person';
@@ -100,6 +108,7 @@ export type SearchType = 'all' | 'recipient' | 'agency' | 'person';
 export interface OrgSuggestion {
   name: string;
   type: string;
+  industry: string;
   description: string;
   source: string;
 }

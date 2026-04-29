@@ -6,6 +6,8 @@ import {
 import { searchFederalRegister, searchDebarments } from '../services/federalRegister';
 import { analyzeEntity } from '../services/analyzer';
 import { aiAnalyzeEntity } from '../services/aiAnalyzer';
+import { optionalAuth, JwtPayload } from '../middleware/auth';
+import { userQueries, orgFileQueries } from '../db';
 
 const router = Router();
 
@@ -77,10 +79,15 @@ async function buildFallbackAnalysis(type: 'recipient' | 'agency' | 'person', na
   };
 }
 
-async function buildAnalysis(type: 'recipient' | 'agency' | 'person', name: string) {
+async function buildAnalysis(
+  type: 'recipient' | 'agency' | 'person',
+  name: string,
+  orgContext?: string,
+  orgData?: string,
+) {
   if (process.env.ANTHROPIC_API_KEY) {
     try {
-      return await aiAnalyzeEntity(name, type);
+      return await aiAnalyzeEntity(name, type, orgContext, orgData);
     } catch (err) {
       console.error('[AI analysis failed — falling back to rule-based]', err instanceof Error ? err.message : err);
     }
@@ -88,21 +95,48 @@ async function buildAnalysis(type: 'recipient' | 'agency' | 'person', name: stri
   return buildFallbackAnalysis(type, name);
 }
 
-router.get('/recipient/:name', async (req: Request, res: Response) => {
+function getOrgContext(req: Request): { orgContext?: string; orgData?: string } {
+  const user = (req as any).user as JwtPayload | undefined;
+  let orgContext: string | undefined = req.query.org ? String(req.query.org) : undefined;
+  let orgData: string | undefined;
+
+  if (user) {
+    const dbUser = userQueries.findById.get(user.userId);
+    if (dbUser) {
+      if (!orgContext && dbUser.org_display_name) {
+        orgContext = dbUser.org_display_name;
+      }
+      const files = orgFileQueries.listByUser.all(user.userId);
+      if (files.length > 0) {
+        orgData = files
+          .map(f => f.content ?? '')
+          .filter(Boolean)
+          .join('\n\n');
+      }
+    }
+  }
+
+  return { orgContext, orgData };
+}
+
+router.get('/recipient/:name', optionalAuth, async (req: Request, res: Response) => {
   const name = decodeURIComponent(req.params.name);
-  try { res.json(await buildAnalysis('recipient', name)); }
+  const { orgContext, orgData } = getOrgContext(req);
+  try { res.json(await buildAnalysis('recipient', name, orgContext, orgData)); }
   catch (e) { console.error(e); res.status(502).json({ error: 'Failed to analyze recipient.' }); }
 });
 
-router.get('/agency/:name', async (req: Request, res: Response) => {
+router.get('/agency/:name', optionalAuth, async (req: Request, res: Response) => {
   const name = decodeURIComponent(req.params.name);
-  try { res.json(await buildAnalysis('agency', name)); }
+  const { orgContext, orgData } = getOrgContext(req);
+  try { res.json(await buildAnalysis('agency', name, orgContext, orgData)); }
   catch (e) { console.error(e); res.status(502).json({ error: 'Failed to analyze agency.' }); }
 });
 
-router.get('/person/:name', async (req: Request, res: Response) => {
+router.get('/person/:name', optionalAuth, async (req: Request, res: Response) => {
   const name = decodeURIComponent(req.params.name);
-  try { res.json(await buildAnalysis('person', name)); }
+  const { orgContext, orgData } = getOrgContext(req);
+  try { res.json(await buildAnalysis('person', name, orgContext, orgData)); }
   catch (e) { console.error(e); res.status(502).json({ error: 'Failed to analyze person/keyword.' }); }
 });
 

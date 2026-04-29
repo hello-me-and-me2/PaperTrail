@@ -93,7 +93,13 @@ async function gatherData(name: string, entityType: EntityType) {
   return { articles, awards, fedDocs, spendingOverTime };
 }
 
-function buildPrompt(name: string, entityType: EntityType, d: Awaited<ReturnType<typeof gatherData>>): string {
+function buildPrompt(
+  name: string,
+  entityType: EntityType,
+  d: Awaited<ReturnType<typeof gatherData>>,
+  orgContext?: string,
+  orgData?: string,
+): string {
   const total = d.awards.reduce((s, a) => s + (a['Award Amount'] || 0), 0);
 
   const contractSnippet = d.awards.slice(0, 30).map(a =>
@@ -112,7 +118,15 @@ function buildPrompt(name: string, entityType: EntityType, d: Awaited<ReturnType
     `FY${s.fiscalYear}: $${(s.amount||0).toLocaleString()} (${s.awardCount} awards)`
   ).join(' | ');
 
-  return `Analyze this entity comprehensively:
+  const orgContextSection = orgContext
+    ? `=== ORGANIZATION CONTEXT ===\nThis analysis is requested by ${orgContext}. Focus on this entity's relationship to ${orgContext} — personnel connections, financial flows, contract relationships, and risks relevant to ${orgContext}.\n\n`
+    : '';
+
+  const orgDataSection = orgData
+    ? `=== INTERNAL ORGANIZATION DATA (${orgContext ?? 'Requesting Org'}) ===\n${orgData.slice(0, 8000)}\n\n`
+    : '';
+
+  return `${orgContextSection}${orgDataSection}Analyze this entity comprehensively:
 
 ENTITY: "${name}"
 TYPE: ${entityType}
@@ -178,10 +192,12 @@ Respond with ONLY valid JSON — no markdown fences, no commentary outside the J
 
 export async function aiAnalyzeEntity(
   name: string,
-  entityType: EntityType
+  entityType: EntityType,
+  orgContext?: string,
+  orgData?: string,
 ): Promise<CorruptionAnalysis & { spendingOverTime: SpendingOverTime[]; sourcesQueried: string[] }> {
   const data = await gatherData(name, entityType);
-  const prompt = buildPrompt(name, entityType, data);
+  const prompt = buildPrompt(name, entityType, data, orgContext, orgData);
 
   const client = new Anthropic();
 

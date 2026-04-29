@@ -1,5 +1,5 @@
 import { useEffect, useState } from 'react';
-import { useParams, Link } from 'react-router-dom';
+import { useParams, useSearchParams, Link } from 'react-router-dom';
 import {
   AlertTriangle,
   Building2,
@@ -57,6 +57,9 @@ function RiskBar({ score, label, detail }: { score: number; label: string; detai
 
 export default function Analysis() {
   const { type, name } = useParams<{ type: EntityType; name: string }>();
+  const [searchParams] = useSearchParams();
+  const orgContext = searchParams.get('org') ?? undefined;
+
   const [data, setData] = useState<(CorruptionAnalysis & { spendingOverTime?: SpendingOverTime[] }) | null>(null);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
@@ -72,9 +75,9 @@ export default function Analysis() {
     setError(null);
     try {
       let result: CorruptionAnalysis & { spendingOverTime?: SpendingOverTime[] };
-      if (entityType === 'agency') result = await analyzeAgency(decodedName);
-      else if (entityType === 'person') result = await analyzePerson(decodedName);
-      else result = await analyzeRecipient(decodedName);
+      if (entityType === 'agency') result = await analyzeAgency(decodedName, orgContext);
+      else if (entityType === 'person') result = await analyzePerson(decodedName, orgContext);
+      else result = await analyzeRecipient(decodedName, orgContext);
       setData(result);
     } catch (e: unknown) {
       setError((e as { response?: { data?: { error?: string } } })?.response?.data?.error || 'Failed to load analysis. Please try again.');
@@ -83,7 +86,7 @@ export default function Analysis() {
     }
   }
 
-  useEffect(() => { load(); }, [decodedName, entityType]);
+  useEffect(() => { load(); }, [decodedName, entityType, orgContext]);
 
   const isCritical = data?.riskLevel === 'CRITICAL';
 
@@ -104,8 +107,13 @@ export default function Analysis() {
           <div className="flex flex-col items-center justify-center py-24 gap-4 text-slate-500">
             <Loader2 className="w-10 h-10 animate-spin text-accent" />
             <div className="text-center">
-              <p className="text-white font-medium">AI is analyzing all available sources…</p>
+              <p className="text-white font-medium">
+                {orgContext ? `Analyzing in context of ${orgContext}…` : 'AI is analyzing all available sources…'}
+              </p>
               <p className="text-sm">Searching news, court records, USASpending.gov &amp; Federal Register — this may take 20–40 seconds</p>
+              {orgContext && data === null && (
+                <p className="text-xs text-accent mt-1">Including your organization's uploaded data</p>
+              )}
             </div>
           </div>
         )}
