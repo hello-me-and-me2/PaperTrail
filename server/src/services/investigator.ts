@@ -4,6 +4,7 @@ import {
 } from './usaSpending';
 import { searchFederalRegister, searchDebarments } from './federalRegister';
 import { analyzeEntity } from './analyzer';
+import { aiAnalyzeEntity } from './aiAnalyzer';
 import { Award, CorruptionAnalysis, SpendingOverTime } from '../types';
 
 export type EntityType = 'recipient' | 'agency' | 'person';
@@ -16,6 +17,8 @@ export type InvestigationEvent =
   | { type: 'entity_complete';  name: string; entityType: EntityType; analysis: CorruptionAnalysis; spendingOverTime: SpendingOverTime[]; sourcesQueried: string[] }
   | { type: 'entity_error';     name: string; entityType: EntityType; error: string }
   | { type: 'investigation_complete'; totalAnalyzed: number; criticalCount: number; highCount: number; totalAmount: number; topRisk: { name: string; score: number; level: string }[] };
+
+// ── Fallback data fetcher used when ANTHROPIC_API_KEY is absent ──
 
 async function fetchEntityData(entity: InvestigationEntity) {
   const endDate = new Date().toISOString().split('T')[0];
@@ -58,10 +61,7 @@ async function fetchEntityData(entity: InvestigationEntity) {
   else timeFilters.keywords = [entity.name];
 
   const spendingOverTime = await getSpendingOverTime(timeFilters).catch(() => []);
-  const sourcesQueried = [
-    'USASpending.gov',
-    ...(allDocs.length ? ['FederalRegister.gov'] : []),
-  ];
+  const sourcesQueried = ['USASpending.gov', ...(allDocs.length ? ['FederalRegister.gov'] : [])];
 
   return { awards: allAwards, fedRegDocs: allDocs, spendingOverTime, sourcesQueried };
 }
@@ -109,6 +109,7 @@ export async function runInvestigation(
   const queue: Item[] = primaryEntities.map(e => ({ entity: e, depth: 0 }));
   const analyzed = new Set<string>();
   const allAnalyses: CorruptionAnalysis[] = [];
+  const useAI = !!process.env.ANTHROPIC_API_KEY;
 
   onEvent({ type: 'investigation_started', entities: primaryEntities, totalQueued: primaryEntities.length });
 
@@ -124,10 +125,23 @@ export async function runInvestigation(
       onEvent({ type: 'entity_fetching', name: entity.name, entityType: entity.type });
 
       try {
-        const { awards, fedRegDocs, spendingOverTime, sourcesQueried } = await fetchEntityData(entity);
-        const analysis = analyzeEntity(entity.name, entity.type, awards, fedRegDocs);
-        allAnalyses.push(analysis);
+        let analysis: CorruptionAnalysis;
+        let spendingOverTime: SpendingOverTime[];
+        let sourcesQueried: string[];
 
+        if (useAI) {
+          const result = await aiAnalyzeEntity(entity.name, entity.type);
+          analysis        = result;
+          spendingOverTime = result.spendingOverTime;
+          sourcesQueried  = result.sourcesQueried;
+        } else {
+          const data = await fetchEntityData(entity);
+          analysis        = analyzeEntity(entity.name, entity.type, data.awards, data.fedRegDocs);
+          spendingOverTime = data.spendingOverTime;
+          sourcesQueried  = data.sourcesQueried;
+        }
+
+        allAnalyses.push(analysis);
         onEvent({ type: 'entity_complete', name: entity.name, entityType: entity.type, analysis, spendingOverTime, sourcesQueried });
 
         if (depth < MAX_DEPTH && analyzed.size < MAX_TOTAL) {

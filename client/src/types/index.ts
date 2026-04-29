@@ -66,6 +66,7 @@ export interface CorruptionAnalysis {
   dataSource: string;
   lastUpdated: string;
   spendingOverTime?: SpendingOverTime[];
+  sourcesQueried?: string[];
 }
 
 export interface RecipientSummary {

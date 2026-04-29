@@ -104,8 +104,8 @@ export default function Analysis() {
           <div className="flex flex-col items-center justify-center py-24 gap-4 text-slate-500">
             <Loader2 className="w-10 h-10 animate-spin text-accent" />
             <div className="text-center">
-              <p className="text-white font-medium">Analyzing federal spending data…</p>
-              <p className="text-sm">Querying USASpending.gov — this may take 10–20 seconds</p>
+              <p className="text-white font-medium">AI is analyzing all available sources…</p>
+              <p className="text-sm">Searching news, court records, USASpending.gov &amp; Federal Register — this may take 20–40 seconds</p>
             </div>
           </div>
         )}
@@ -226,38 +226,17 @@ export default function Analysis() {
                 )}
 
                 <div className="card p-4">
-                  <h3 className="text-xs font-semibold text-slate-500 uppercase tracking-wider mb-3">Data Sources</h3>
-                  <div className="space-y-2">
-                    <a
-                      href="https://www.usaspending.gov"
-                      target="_blank"
-                      rel="noopener noreferrer"
-                      className="flex items-center justify-between text-xs text-slate-400 hover:text-white transition-colors group"
-                    >
-                      <span>USASpending.gov</span>
-                      <ExternalLink className="w-3 h-3 opacity-0 group-hover:opacity-100" />
-                    </a>
-                    <a
-                      href="https://sam.gov"
-                      target="_blank"
-                      rel="noopener noreferrer"
-                      className="flex items-center justify-between text-xs text-slate-400 hover:text-white transition-colors group"
-                    >
-                      <span>SAM.gov (Federal Awards)</span>
-                      <ExternalLink className="w-3 h-3 opacity-0 group-hover:opacity-100" />
-                    </a>
-                    <a
-                      href="https://www.fpds.gov"
-                      target="_blank"
-                      rel="noopener noreferrer"
-                      className="flex items-center justify-between text-xs text-slate-400 hover:text-white transition-colors group"
-                    >
-                      <span>FPDS (Procurement Data)</span>
-                      <ExternalLink className="w-3 h-3 opacity-0 group-hover:opacity-100" />
-                    </a>
+                  <h3 className="text-xs font-semibold text-slate-500 uppercase tracking-wider mb-3">Sources Queried</h3>
+                  <div className="space-y-1.5">
+                    {(data.sourcesQueried ?? ['USASpending.gov', 'FederalRegister.gov']).map((src) => (
+                      <div key={src} className="flex items-center gap-2 text-xs text-slate-400">
+                        <span className="w-1.5 h-1.5 rounded-full bg-green-500 shrink-0" />
+                        <span>{src}</span>
+                      </div>
+                    ))}
                   </div>
                   <p className="text-xs text-slate-600 mt-3 leading-relaxed">
-                    Data updated nightly from official U.S. government open data sources. Last queried: {new Date(data.lastUpdated).toLocaleString()}.
+                    Last analyzed: {new Date(data.lastUpdated).toLocaleString()}.
                   </p>
                 </div>
 

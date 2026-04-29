@@ -14,29 +14,29 @@ const EXAMPLES = [
 const FEATURES = [
   {
     icon: FileSearch,
-    title: 'Search Federal Spending',
-    desc: 'Search any company, government agency, or keyword against the full federal contracts and grants database.',
+    title: 'Search Anything',
+    desc: 'Search any person, company, agency, or topic. AI scours news, court records, federal databases, and regulatory filings simultaneously.',
     color: 'text-blue-400',
     bg: 'bg-blue-950',
   },
   {
     icon: AlertTriangle,
-    title: 'Risk Analysis',
-    desc: 'Automated scoring of no-bid contracts, award concentration, single-offer bids, and anomalous spending patterns.',
+    title: 'AI Risk Analysis',
+    desc: 'Claude Opus 4.7 synthesizes all gathered evidence to score corruption risk across no-bid contracts, fraud patterns, revolving door relationships, and more.',
     color: 'text-red-400',
     bg: 'bg-red-950',
   },
   {
     icon: Shield,
-    title: 'Evidence-Backed',
-    desc: 'Every finding is backed by specific contract records linked directly to USASpending.gov official government data.',
+    title: 'Multi-Source Verified',
+    desc: 'Every finding is cross-referenced across USASpending.gov, Federal Register, news investigations, and court records — confidence scores show how many sources agree.',
     color: 'text-green-400',
     bg: 'bg-green-950',
   },
   {
     icon: TrendingUp,
-    title: 'Historical Trends',
-    desc: 'See spending trends over time to identify sudden spikes or suspicious patterns in award history.',
+    title: 'Deep Research',
+    desc: 'AI identifies responsible parties, uncovers historical patterns, and connects the dots across organizations — far beyond simple keyword searches.',
     color: 'text-purple-400',
     bg: 'bg-purple-950',
   },
@@ -64,7 +64,7 @@ export default function Home() {
         <div className="relative max-w-4xl mx-auto px-4 pt-20 pb-16 text-center">
           <div className="inline-flex items-center gap-2 bg-dark-700 border border-dark-500 rounded-full px-3 py-1.5 text-xs text-slate-400 mb-6">
             <span className="w-1.5 h-1.5 bg-green-400 rounded-full animate-pulse" />
-            Live data from USASpending.gov — Official U.S. Federal Spending
+            AI-powered · USASpending.gov · Federal Register · News &amp; Court Records
           </div>
 
           <h1 className="text-5xl sm:text-6xl font-bold text-white mb-4 tracking-tight leading-tight">

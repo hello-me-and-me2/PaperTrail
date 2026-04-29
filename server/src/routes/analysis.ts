@@ -5,8 +5,11 @@ import {
 } from '../services/usaSpending';
 import { searchFederalRegister, searchDebarments } from '../services/federalRegister';
 import { analyzeEntity } from '../services/analyzer';
+import { aiAnalyzeEntity } from '../services/aiAnalyzer';
 
 const router = Router();
+
+// ── Fallback: rule-based analysis used when ANTHROPIC_API_KEY is absent ──
 
 async function gatherAwards(type: 'recipient' | 'agency' | 'person', name: string) {
   const [primary, keyword, soleSource] = await Promise.allSettled([
@@ -16,7 +19,6 @@ async function gatherAwards(type: 'recipient' | 'agency' | 'person', name: strin
     searchAwardsByKeyword(name, 1, 50),
     getSoleSourceAwards(name, 50),
   ]);
-
   const seen = new Set<string>();
   const all = [];
   for (const r of [primary, keyword, soleSource]) {
@@ -48,7 +50,7 @@ async function gatherFedRegDocs(name: string) {
 async function gatherSpendingOverTime(type: 'recipient' | 'agency' | 'person', name: string) {
   const endDate = new Date().toISOString().split('T')[0];
   const filters: Record<string, unknown> = {
-    award_type_codes: ['A', 'B', 'C', 'D', '02', '03', '04', '05'],
+    award_type_codes: ['A','B','C','D','02','03','04','05'],
     time_period: [{ start_date: '2018-01-01', end_date: endDate }],
   };
   if (type === 'recipient') filters.recipient_search_text = [name];
@@ -57,27 +59,33 @@ async function gatherSpendingOverTime(type: 'recipient' | 'agency' | 'person', n
   return getSpendingOverTime(filters).catch(() => []);
 }
 
-async function buildAnalysis(type: 'recipient' | 'agency' | 'person', name: string) {
-  // All data sources run in parallel
+async function buildFallbackAnalysis(type: 'recipient' | 'agency' | 'person', name: string) {
   const [awards, fedRegDocs, spendingOverTime, profile] = await Promise.all([
     gatherAwards(type, name),
     gatherFedRegDocs(name),
     gatherSpendingOverTime(type, name),
     type === 'recipient' ? fetchRecipientProfile(name).catch(() => null) : Promise.resolve(null),
   ]);
-
   const analysis = analyzeEntity(name, type, awards as Parameters<typeof analyzeEntity>[2], fedRegDocs);
-
   return {
-    ...analysis,
-    spendingOverTime,
-    profile,
+    ...analysis, spendingOverTime, profile,
     sourcesQueried: [
       'USASpending.gov — Federal Contracts & Grants',
       'FederalRegister.gov — Regulatory & Legal Records',
       ...(profile ? ['USASpending.gov Recipient Profile'] : []),
     ],
   };
+}
+
+async function buildAnalysis(type: 'recipient' | 'agency' | 'person', name: string) {
+  if (process.env.ANTHROPIC_API_KEY) {
+    try {
+      return await aiAnalyzeEntity(name, type);
+    } catch (err) {
+      console.error('[AI analysis failed — falling back to rule-based]', err instanceof Error ? err.message : err);
+    }
+  }
+  return buildFallbackAnalysis(type, name);
 }
 
 router.get('/recipient/:name', async (req: Request, res: Response) => {
