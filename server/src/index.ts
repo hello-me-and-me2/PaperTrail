@@ -13,14 +13,17 @@ import orgRouter from './routes/org';
 const app = express();
 const PORT = process.env.PORT || 3001;
 
+// Trust Railway / cloud proxy so req.ip reflects the real client IP
+app.set('trust proxy', 1);
+
 app.use(cors());
 app.use(express.json());
 
-// Stricter limit on auth endpoints to slow brute-force attempts
-const authLimiter = rateLimit({ windowMs: 15 * 60 * 1000, max: 30 });
+// Rate limits — generous enough for normal multi-step signup flows
+const authLimiter = rateLimit({ windowMs: 15 * 60 * 1000, max: 200 });
 app.use('/api/auth', authLimiter);
 
-const apiLimiter = rateLimit({ windowMs: 60 * 1000, max: 100 });
+const apiLimiter = rateLimit({ windowMs: 60 * 1000, max: 300 });
 app.use('/api', apiLimiter);
 
 app.use('/api/auth', authRouter);

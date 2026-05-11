@@ -115,8 +115,9 @@ export default function Onboarding() {
         org_type: orgType,
         org_display_name: orgName,
       });
-    } catch {
-      setError('Failed to save. Please try again.');
+    } catch (err: unknown) {
+      const msg = (err as { response?: { data?: { error?: string } } })?.response?.data?.error;
+      setError(msg || 'Failed to save. Please try again.');
       setSaving(false);
     }
   }

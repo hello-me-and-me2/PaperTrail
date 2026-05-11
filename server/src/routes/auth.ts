@@ -127,7 +127,11 @@ router.post('/onboarding', requireAuth, (req: Request, res: Response) => {
     userId
   );
 
-  const user = userQueries.findById.get(userId)!;
+  const user = userQueries.findById.get(userId);
+  if (!user) {
+    res.status(404).json({ error: 'User not found. Please log in again.' });
+    return;
+  }
   res.json({ user: safeUser(user) });
 });
 
@@ -143,7 +147,11 @@ router.post('/survey', requireAuth, (req: Request, res: Response) => {
   }
 
   userQueries.updateSurvey.run(JSON.stringify(survey), userId);
-  const user = userQueries.findById.get(userId)!;
+  const user = userQueries.findById.get(userId);
+  if (!user) {
+    res.status(404).json({ error: 'User not found. Please log in again.' });
+    return;
+  }
   res.json({ user: safeUser(user) });
 });
 
