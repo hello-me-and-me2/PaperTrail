@@ -70,6 +70,16 @@ if (!existing) {
   db.prepare('UPDATE users SET onboarding_complete = 1, survey_complete = 1, data_setup_complete = 1 WHERE email = ?').run(ADMIN_EMAIL);
 }
 
+// One-time reset: delete all non-admin accounts and their files
+db.exec(`CREATE TABLE IF NOT EXISTS admin_flags (key TEXT PRIMARY KEY, value TEXT)`);
+const resetDone = (db.prepare("SELECT value FROM admin_flags WHERE key = 'users_reset_v1'").get() as { value: string } | undefined);
+if (!resetDone) {
+  db.exec(`DELETE FROM org_files WHERE user_id IN (SELECT id FROM users WHERE role != 'admin')`);
+  db.exec(`DELETE FROM users WHERE role != 'admin'`);
+  db.prepare("INSERT OR REPLACE INTO admin_flags (key, value) VALUES ('users_reset_v1', '1')").run();
+  console.log('[db] One-time reset: all non-admin accounts cleared');
+}
+
 export interface User {
   id: number;
   email: string;
