@@ -1,7 +1,16 @@
-import { Shield, TrendingUp, FileSearch, AlertTriangle, Lock, Building2, Landmark, Users, Crosshair, BarChart3, ArrowRight } from 'lucide-react';
+import { useState, useEffect, useRef } from 'react';
+import {
+  Shield, TrendingUp, FileSearch, AlertTriangle, Lock,
+  Building2, Landmark, Users, Crosshair, BarChart3, ArrowRight,
+  Sparkles, Upload, CheckCircle2, X, Loader2, ChevronDown, ChevronUp,
+  FileText, DollarSign, FileSpreadsheet, Receipt, MessageSquare,
+  Database, ExternalLink,
+} from 'lucide-react';
 import { Link } from 'react-router-dom';
 import SearchBar from '../components/SearchBar';
 import { useAuth } from '../contexts/AuthContext';
+import { OrgSurvey } from '../types';
+import { uploadOrgFile, listOrgFiles } from '../services/api';
 
 const TRAIL_DOTS: [number, number][] = [
   [38, 158], [50, 138], [62, 120], [76, 103], [90, 88],
@@ -19,52 +28,32 @@ const FEATURES = [
     icon: FileSearch,
     title: 'Connect Any Data Source',
     desc: 'Link payment systems, ERP exports, procurement records, expense reports, and vendor contracts. AI works across structured and unstructured formats.',
-    color: 'text-blue-600',
-    bg: 'bg-blue-50',
-    border: 'border-blue-100',
+    color: 'text-blue-600', bg: 'bg-blue-50', border: 'border-blue-100',
   },
   {
     icon: AlertTriangle,
     title: 'AI Corruption Analysis',
     desc: 'Claude Opus 4.7 synthesizes your internal data with public debarment lists, news investigations, and court records to surface patterns humans miss.',
-    color: 'text-red-600',
-    bg: 'bg-red-50',
-    border: 'border-red-100',
+    color: 'text-red-600', bg: 'bg-red-50', border: 'border-red-100',
   },
   {
     icon: Shield,
     title: 'Multi-Source Verification',
     desc: 'Every finding is cross-referenced across internal records, USASpending.gov, Federal Register, and live news — confidence scores show agreement across sources.',
-    color: 'text-green-600',
-    bg: 'bg-green-50',
-    border: 'border-green-100',
+    color: 'text-green-600', bg: 'bg-green-50', border: 'border-green-100',
   },
   {
     icon: BarChart3,
     title: 'Audit-Ready Reports',
     desc: 'Structured risk reports with responsible parties, evidence chains, and severity ratings — formatted for compliance officers, auditors, and legal teams.',
-    color: 'text-purple-600',
-    bg: 'bg-purple-50',
-    border: 'border-purple-100',
+    color: 'text-purple-600', bg: 'bg-purple-50', border: 'border-purple-100',
   },
 ];
 
 const WHO = [
-  {
-    icon: Building2,
-    label: 'Corporations & Enterprises',
-    desc: 'Detect vendor fraud, procurement irregularities, and expense abuse before external audits surface them.',
-  },
-  {
-    icon: Landmark,
-    label: 'Government Agencies',
-    desc: 'Monitor grant recipients, contractor compliance, and internal spending anomalies in real time.',
-  },
-  {
-    icon: Users,
-    label: 'Law Firms & Auditors',
-    desc: 'AI-accelerated forensic accounting — analyze years of records in minutes, not months.',
-  },
+  { icon: Building2, label: 'Corporations & Enterprises', desc: 'Detect vendor fraud, procurement irregularities, and expense abuse before external audits surface them.' },
+  { icon: Landmark,  label: 'Government Agencies',        desc: 'Monitor grant recipients, contractor compliance, and internal spending anomalies in real time.' },
+  { icon: Users,     label: 'Law Firms & Auditors',       desc: 'AI-accelerated forensic accounting — analyze years of records in minutes, not months.' },
 ];
 
 const PAPER_BG: React.CSSProperties = {
@@ -80,16 +69,254 @@ const PAPER_BG: React.CSSProperties = {
 };
 
 const ORG_TYPE_ANALYSIS: Record<string, 'recipient' | 'agency' | 'person'> = {
-  government_agency: 'agency',
-  organization: 'recipient',
-  company: 'recipient',
+  government_agency: 'agency', organization: 'recipient', company: 'recipient',
 };
 
 const ORG_TYPE_LABELS: Record<string, string> = {
-  government_agency: 'Government Agency',
-  organization: 'Organization',
-  company: 'Company',
+  government_agency: 'Government Agency', organization: 'Organization', company: 'Company',
 };
+
+interface Rec {
+  id: string;
+  label: string;
+  hint: string;
+  icon: typeof FileText;
+  priority: 'high' | 'medium';
+}
+
+function buildRecommendations(orgType: string, survey: OrgSurvey | null): Rec[] {
+  const recs: Rec[] = [];
+  const risks = survey?.riskAreas ?? [];
+  const industry = survey?.industry ?? '';
+  const isGov = orgType === 'government_agency';
+
+  // Always recommend
+  recs.push({ id: 'vendor_list',          label: 'Vendor & Supplier List',          hint: 'Names, contract amounts, categories, and dates — critical for detecting kickbacks.',              icon: Building2,       priority: 'high' });
+  recs.push({ id: 'financial_ledger',     label: 'Financial Transactions / Ledger', hint: 'Transaction dates, amounts, accounts, and payees — the foundation of fraud detection.',         icon: DollarSign,      priority: 'high' });
+
+  // Risk-driven
+  if (risks.includes('expense_abuse')) {
+    recs.push({ id: 'expense_reports',    label: 'Expense Reports',                 hint: 'Submitter, amount, category, approver — detects abuse and policy violations.',                   icon: Receipt,         priority: 'high' });
+  }
+  if (risks.includes('procurement') || risks.includes('bid_rigging')) {
+    recs.push({ id: 'contract_records',   label: 'Contract Records',                hint: 'Contract IDs, parties, values, dates, and type of award — flags irregularities.',                icon: FileSpreadsheet, priority: 'high' });
+  }
+  if (risks.includes('payroll_fraud')) {
+    recs.push({ id: 'employee_directory', label: 'Employee / Personnel Directory',  hint: 'Names, roles, departments, hire dates — enables ghost-employee detection.',                      icon: Users,           priority: 'high' });
+  }
+  if (risks.includes('conflicts')) {
+    recs.push({ id: 'org_chart',          label: 'Org Chart / Reporting Structure', hint: 'Who reports to whom — maps conflicts of interest and undue influence.',                          icon: FileText,        priority: 'medium' });
+  }
+  if (risks.includes('grant_misuse') || isGov) {
+    recs.push({ id: 'grant_records',      label: 'Grant Awards & Tracking',         hint: 'Grant IDs, recipients, amounts, conditions — detects misappropriation.',                        icon: DollarSign,      priority: 'high' });
+  }
+
+  // Org type
+  if (isGov) {
+    recs.push({ id: 'budget_docs',        label: 'Annual Budget Documents',         hint: 'Approved allocations vs. actuals — surfaces unauthorized spending.',                             icon: FileSpreadsheet, priority: 'medium' });
+  }
+
+  // Industry-driven
+  if (industry.toLowerCase().includes('healthcare')) {
+    recs.push({ id: 'billing_records',    label: 'Billing & Claims Records',        hint: 'Insurance claims, procedure codes, billing amounts — detects upcoding and fraud.',               icon: Receipt,         priority: 'high' });
+  }
+  if (industry.toLowerCase().includes('construction')) {
+    recs.push({ id: 'change_orders',      label: 'Change Orders & Subcontracts',    hint: 'Change order log and subcontractor agreements — common vector for bid rigging.',                 icon: FileSpreadsheet, priority: 'high' });
+  }
+  if (industry.toLowerCase().includes('defense') || industry.toLowerCase().includes('aerospace')) {
+    recs.push({ id: 'far_compliance',     label: 'FAR Compliance Records',          hint: 'Federal Acquisition Regulation compliance documentation.',                                        icon: FileText,        priority: 'medium' });
+  }
+
+  // Always add meeting minutes
+  recs.push({ id: 'meeting_minutes',      label: 'Meeting Minutes / Communications', hint: 'Dates, attendees, decisions — surfaces informal agreements that bypass oversight.',             icon: MessageSquare,   priority: 'medium' });
+
+  // Deduplicate by id
+  const seen = new Set<string>();
+  return recs.filter(r => { if (seen.has(r.id)) return false; seen.add(r.id); return true; });
+}
+
+interface UploadedFile {
+  id: number;
+  original_name: string;
+  file_type: string;
+  file_size: number | null;
+  uploaded_at: string;
+}
+
+function fmtSize(bytes: number | null) {
+  if (!bytes) return '';
+  if (bytes >= 1024 * 1024) return `${(bytes / 1024 / 1024).toFixed(1)} MB`;
+  return `${(bytes / 1024).toFixed(0)} KB`;
+}
+
+function RecommendationsPanel({ orgName, orgType, survey }: { orgName: string; orgType: string; survey: OrgSurvey | null }) {
+  const [open, setOpen] = useState(true);
+  const [files, setFiles] = useState<UploadedFile[]>([]);
+  const [uploading, setUploading] = useState<string | null>(null);
+  const [uploadErr, setUploadErr] = useState('');
+  const fileInputRef = useRef<HTMLInputElement>(null);
+  const [targetRec, setTargetRec] = useState<string | null>(null);
+
+  useEffect(() => {
+    listOrgFiles().then(setFiles).catch(() => {});
+  }, []);
+
+  const recs = buildRecommendations(orgType, survey);
+  const connectedIds = new Set(files.map(f => f.original_name.toLowerCase()));
+  const connected = recs.filter(r => connectedIds.has(r.label.toLowerCase()) || Array.from(connectedIds).some(n => n.includes(r.id.replace(/_/g, '').slice(0, 6))));
+  const pending = recs.filter(r => !connected.includes(r));
+
+  async function handleFileSelected(recId: string, selected: FileList | null) {
+    if (!selected || selected.length === 0) return;
+    setUploadErr('');
+    setUploading(recId);
+    try {
+      for (const file of Array.from(selected)) {
+        const result = await uploadOrgFile(file);
+        setFiles(prev => [{
+          id: result.id,
+          original_name: result.originalName,
+          file_type: result.fileType,
+          file_size: result.fileSize,
+          uploaded_at: new Date().toISOString(),
+        }, ...prev]);
+      }
+    } catch {
+      setUploadErr('Upload failed — only .csv, .txt, .json, .tsv files are accepted.');
+    } finally {
+      setUploading(null);
+      setTargetRec(null);
+    }
+  }
+
+  return (
+    <div className="bg-white/80 border border-blue-100 rounded-2xl shadow-sm overflow-hidden mb-8">
+      {/* Header */}
+      <button
+        onClick={() => setOpen(!open)}
+        className="w-full flex items-center justify-between px-6 py-4 text-left hover:bg-blue-50/50 transition-colors"
+      >
+        <div className="flex items-center gap-3">
+          <div className="w-8 h-8 bg-accent/10 rounded-lg flex items-center justify-center">
+            <Sparkles className="w-4 h-4 text-accent" />
+          </div>
+          <div>
+            <p className="font-semibold text-slate-800 text-sm">Recommended Data for {orgName}</p>
+            <p className="text-xs text-slate-500">
+              {connected.length}/{recs.length} data sources connected · AI-tailored to your profile
+            </p>
+          </div>
+        </div>
+        <div className="flex items-center gap-2">
+          {pending.length > 0 && (
+            <span className="text-xs bg-amber-100 text-amber-700 font-medium rounded-full px-2 py-0.5">
+              {pending.length} recommended
+            </span>
+          )}
+          {open ? <ChevronUp className="w-4 h-4 text-slate-400" /> : <ChevronDown className="w-4 h-4 text-slate-400" />}
+        </div>
+      </button>
+
+      {open && (
+        <div className="border-t border-slate-100 px-6 py-4">
+          {uploadErr && (
+            <p className="text-xs text-red-500 mb-3">{uploadErr}</p>
+          )}
+
+          {/* Hidden file input */}
+          <input
+            ref={fileInputRef}
+            type="file"
+            multiple
+            accept=".csv,.txt,.json,.tsv"
+            className="hidden"
+            onChange={(e) => handleFileSelected(targetRec ?? '', e.target.files)}
+          />
+
+          <div className="space-y-2">
+            {recs.map((rec) => {
+              const Icon = rec.icon;
+              const isConnected = connected.includes(rec);
+              const isUploading = uploading === rec.id;
+
+              return (
+                <div
+                  key={rec.id}
+                  className={`flex items-start gap-3 p-3 rounded-xl border transition-colors ${
+                    isConnected
+                      ? 'border-green-200 bg-green-50'
+                      : rec.priority === 'high'
+                        ? 'border-amber-200 bg-amber-50/60'
+                        : 'border-slate-200 bg-slate-50'
+                  }`}
+                >
+                  <div className={`w-7 h-7 rounded-md flex items-center justify-center shrink-0 mt-0.5 ${
+                    isConnected ? 'bg-green-100' : 'bg-white border border-slate-200'
+                  }`}>
+                    {isConnected
+                      ? <CheckCircle2 className="w-4 h-4 text-green-500" />
+                      : <Icon className="w-3.5 h-3.5 text-slate-500" />
+                    }
+                  </div>
+                  <div className="flex-1 min-w-0">
+                    <div className="flex items-center gap-1.5 flex-wrap">
+                      <p className="text-xs font-semibold text-slate-800">{rec.label}</p>
+                      {!isConnected && rec.priority === 'high' && (
+                        <span className="text-xs bg-amber-200 text-amber-800 rounded-full px-1.5 py-0.5 font-medium">High Impact</span>
+                      )}
+                      {isConnected && (
+                        <span className="text-xs bg-green-100 text-green-700 rounded-full px-1.5 py-0.5">Connected</span>
+                      )}
+                    </div>
+                    <p className="text-xs text-slate-500 mt-0.5 leading-relaxed">{rec.hint}</p>
+                  </div>
+                  {!isConnected && (
+                    <button
+                      onClick={() => { setTargetRec(rec.id); setTimeout(() => fileInputRef.current?.click(), 10); }}
+                      disabled={isUploading}
+                      className="shrink-0 flex items-center gap-1.5 text-xs font-semibold bg-accent hover:bg-blue-600 disabled:opacity-50 text-white px-3 py-1.5 rounded-lg transition-colors"
+                    >
+                      {isUploading
+                        ? <><Loader2 className="w-3 h-3 animate-spin" /> Uploading…</>
+                        : <><Upload className="w-3 h-3" /> Add</>
+                      }
+                    </button>
+                  )}
+                </div>
+              );
+            })}
+          </div>
+
+          {files.length > 0 && (
+            <div className="mt-4 pt-4 border-t border-slate-100">
+              <p className="text-xs font-semibold text-slate-500 uppercase tracking-wider mb-2">All Uploaded Files</p>
+              <div className="space-y-1.5">
+                {files.map((f) => (
+                  <div key={f.id} className="flex items-center gap-2 text-xs text-slate-600">
+                    <CheckCircle2 className="w-3.5 h-3.5 text-green-500 shrink-0" />
+                    <span className="truncate flex-1">{f.original_name}</span>
+                    <span className="text-slate-400 shrink-0">{fmtSize(f.file_size)}</span>
+                  </div>
+                ))}
+              </div>
+            </div>
+          )}
+
+          <div className="mt-4 pt-3 border-t border-slate-100 flex items-center justify-between">
+            <p className="text-xs text-slate-400">
+              Recommendations are tailored to your business profile. <Link to="/data-setup" className="text-accent hover:underline">Upload more files →</Link>
+            </p>
+            {pending.length === 0 && (
+              <span className="flex items-center gap-1 text-xs text-green-600 font-medium">
+                <CheckCircle2 className="w-3.5 h-3.5" /> All connected
+              </span>
+            )}
+          </div>
+        </div>
+      )}
+    </div>
+  );
+}
 
 export default function Home() {
   const { user } = useAuth();
@@ -101,36 +328,24 @@ export default function Home() {
     <div className="min-h-screen" style={PAPER_BG}>
       {/* ── Hero ── */}
       <div className="relative overflow-hidden">
-        {/* Hand-drawn trail doodle — bottom-right corner of hero */}
         <svg
           viewBox="0 0 200 185"
           className="absolute bottom-0 right-4 sm:right-14 w-32 sm:w-44 opacity-[0.19] pointer-events-none select-none"
           xmlns="http://www.w3.org/2000/svg"
         >
-          <path
-            d="M 30 175 C 40 155 25 132 55 117 S 82 90 92 74 S 122 52 142 37 S 168 20 178 10"
-            fill="none"
-            stroke="#6b4f2a"
-            strokeWidth="2.5"
-            strokeDasharray="6,5"
-            strokeLinecap="round"
-          />
+          <path d="M 30 175 C 40 155 25 132 55 117 S 82 90 92 74 S 122 52 142 37 S 168 20 178 10"
+            fill="none" stroke="#6b4f2a" strokeWidth="2.5" strokeDasharray="6,5" strokeLinecap="round" />
           {TRAIL_DOTS.map(([cx, cy], i) => (
             <circle key={i} cx={cx} cy={cy} r="2.5" fill="#6b4f2a" />
           ))}
           <circle cx="30" cy="175" r="5" fill="none" stroke="#6b4f2a" strokeWidth="2" />
-          <path
-            d="M178 4 L180 9 L185 9 L181 13 L183 18 L178 15 L173 18 L175 13 L171 9 L176 9 Z"
-            fill="#6b4f2a"
-            opacity="0.7"
-          />
+          <path d="M178 4 L180 9 L185 9 L181 13 L183 18 L178 15 L173 18 L175 13 L171 9 L176 9 Z" fill="#6b4f2a" opacity="0.7" />
           {GRASS_TUFTS.map(([x1, y1, x2, y2], i) => (
             <line key={i} x1={x1} y1={y1} x2={x2} y2={y2} stroke="#5a7a3a" strokeWidth="1.5" strokeLinecap="round" />
           ))}
         </svg>
 
         <div className="relative max-w-4xl mx-auto px-4 pt-20 pb-16 text-center">
-          {/* Org badge */}
           <div className="inline-flex items-center gap-2 bg-white/70 border border-blue-100 rounded-full px-3 py-1.5 text-xs text-slate-600 mb-6 shadow-sm">
             <Lock className="w-3 h-3 text-blue-500" />
             {orgType ? ORG_TYPE_LABELS[orgType] : 'Enterprise'} · Private · AI-Powered
@@ -151,7 +366,6 @@ export default function Home() {
             }
           </p>
 
-          {/* Primary CTAs when org is set */}
           {orgName && (
             <div className="flex flex-wrap justify-center gap-3 mb-8">
               <Link
@@ -171,9 +385,8 @@ export default function Home() {
             </div>
           )}
 
-          {/* Search for specific vendors/contractors */}
           <p className="text-xs text-slate-500 mb-2">
-            {orgName ? 'Or search a specific vendor, contractor, or person:' : 'Search a vendor, contractor, or entity:'}
+            {orgName ? 'Or search a specific vendor, contractor, or person in your data:' : 'Search a vendor, contractor, or entity:'}
           </p>
           <div className="flex justify-center mb-4">
             <SearchBar autoFocus={!orgName} />
@@ -194,8 +407,17 @@ export default function Home() {
         </div>
       </div>
 
-      {/* ── Feature cards ── */}
       <div className="max-w-5xl mx-auto px-4 pb-16">
+        {/* ── Recommended Data Panel (org users only) ── */}
+        {orgName && user?.orgSurvey !== undefined && (
+          <RecommendationsPanel
+            orgName={orgName}
+            orgType={orgType}
+            survey={user.orgSurvey}
+          />
+        )}
+
+        {/* ── Feature cards ── */}
         <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4 mb-16">
           {FEATURES.map((f) => {
             const Icon = f.icon;
@@ -213,9 +435,7 @@ export default function Home() {
 
         {/* ── Who uses it ── */}
         <div className="mb-16">
-          <h2 className="text-center text-xl font-bold text-slate-800 mb-2">
-            Built for Organizations That Need Answers
-          </h2>
+          <h2 className="text-center text-xl font-bold text-slate-800 mb-2">Built for Organizations That Need Answers</h2>
           <p className="text-center text-sm text-slate-500 mb-8">
             PaperTrail contracts with organizations to provide private, AI-powered corruption detection on their own data.
           </p>
@@ -241,24 +461,11 @@ export default function Home() {
             <TrendingUp className="w-5 h-5 text-accent" />
             How Risk Analysis Works
           </h2>
-
           <div className="grid grid-cols-1 sm:grid-cols-3 gap-6 mb-6">
             {[
-              {
-                step: '1',
-                title: 'Connect Your Data',
-                desc: 'Securely provide payment records, vendor lists, ERP exports, and business logs for AI analysis.',
-              },
-              {
-                step: '2',
-                title: 'AI Scans Everything',
-                desc: 'Claude Opus 4.7 cross-references your data against public debarment lists, news investigations, and court records simultaneously.',
-              },
-              {
-                step: '3',
-                title: 'Receive Risk Reports',
-                desc: 'Prioritized findings with responsible parties, flagged transactions, and evidence chains — ready for auditors and legal teams.',
-              },
+              { step: '1', title: 'Connect Your Data',    desc: 'Securely provide payment records, vendor lists, ERP exports, and business logs for AI analysis.' },
+              { step: '2', title: 'AI Scans Everything',  desc: 'Claude Opus 4.7 cross-references your data against public debarment lists, news investigations, and court records simultaneously.' },
+              { step: '3', title: 'Receive Risk Reports', desc: 'Prioritized findings with responsible parties, flagged transactions, and evidence chains — ready for auditors and legal teams.' },
             ].map((s) => (
               <div key={s.step} className="flex gap-3">
                 <div className="w-7 h-7 rounded-full bg-accent text-white text-xs font-bold flex items-center justify-center shrink-0 mt-0.5">
@@ -271,7 +478,6 @@ export default function Home() {
               </div>
             ))}
           </div>
-
           <div className="grid grid-cols-2 sm:grid-cols-4 gap-3 text-xs">
             {[
               { level: 'CRITICAL', cls: 'bg-red-50 text-red-600 border-red-200',          desc: '75–100: Severe red flags' },
@@ -285,10 +491,8 @@ export default function Home() {
               </div>
             ))}
           </div>
-
           <p className="text-xs text-slate-400 mt-4 leading-relaxed">
-            <strong className="text-slate-500">Disclaimer:</strong> Risk scores reflect objective pattern analysis using public and provided data.
-            A high score indicates anomalous patterns, not proven wrongdoing. Consult official IG reports or legal counsel for final determinations.
+            <strong className="text-slate-500">Disclaimer:</strong> Risk scores reflect objective pattern analysis using public and provided data. A high score indicates anomalous patterns, not proven wrongdoing. Consult official IG reports or legal counsel for final determinations.
           </p>
         </div>
       </div>

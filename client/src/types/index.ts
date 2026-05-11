@@ -112,3 +112,30 @@ export interface OrgSuggestion {
   description: string;
   source: string;
 }
+
+export interface OrgSurvey {
+  employeeCount?: string;
+  annualBudget?: string;
+  geographicScope?: string;
+  industry?: string;
+  vendorCount?: string;
+  riskAreas?: string[];
+  regulatoryFrameworks?: string[];
+  auditTeam?: string;
+  dataSystems?: string[];
+  paymentTracking?: string;
+}
+
+export interface OrgDataHit {
+  name: string;
+  detail: string;
+  source: string;
+}
+
+export interface DataRecommendation {
+  id: string;
+  label: string;
+  hint: string;
+  priority: 'high' | 'medium' | 'low';
+  fileTypes: string;
+}

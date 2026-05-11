@@ -3,6 +3,19 @@ import bcrypt from 'bcryptjs';
 import { userQueries, User } from '../db';
 import { signToken, requireAuth, JwtPayload } from '../middleware/auth';
 
+interface OrgSurvey {
+  employeeCount?: string;
+  annualBudget?: string;
+  geographicScope?: string;
+  industry?: string;
+  vendorCount?: string;
+  riskAreas?: string[];
+  regulatoryFrameworks?: string[];
+  auditTeam?: string;
+  dataSystems?: string[];
+  paymentTracking?: string;
+}
+
 const router = Router();
 
 function safeUser(u: User) {
@@ -14,7 +27,9 @@ function safeUser(u: User) {
     orgType: u.org_type ?? null,
     orgDisplayName: u.org_display_name ?? null,
     onboardingComplete: u.onboarding_complete === 1,
+    surveyComplete: u.survey_complete === 1,
     dataSetupComplete: u.data_setup_complete === 1,
+    orgSurvey: u.org_survey ? JSON.parse(u.org_survey) as OrgSurvey : null,
   };
 }
 
@@ -112,6 +127,22 @@ router.post('/onboarding', requireAuth, (req: Request, res: Response) => {
     userId
   );
 
+  const user = userQueries.findById.get(userId)!;
+  res.json({ user: safeUser(user) });
+});
+
+// POST /api/auth/survey — save business survey answers (requires auth, one-time)
+router.post('/survey', requireAuth, (req: Request, res: Response) => {
+  const { userId } = (req as Request & { user: JwtPayload }).user;
+  const survey = req.body as OrgSurvey;
+
+  // Basic validation — at least one meaningful field
+  if (!survey || typeof survey !== 'object') {
+    res.status(400).json({ error: 'Survey data is required.' });
+    return;
+  }
+
+  userQueries.updateSurvey.run(JSON.stringify(survey), userId);
   const user = userQueries.findById.get(userId)!;
   res.json({ user: safeUser(user) });
 });

@@ -16,8 +16,80 @@ function safeUser(u: User) {
     orgType: u.org_type ?? null,
     orgDisplayName: u.org_display_name ?? null,
     onboardingComplete: u.onboarding_complete === 1,
+    surveyComplete: u.survey_complete === 1,
     dataSetupComplete: u.data_setup_complete === 1,
+    orgSurvey: u.org_survey ? JSON.parse(u.org_survey) : null,
   };
+}
+
+// Parse a single CSV line handling quoted fields
+function parseCSVLine(line: string, sep: string): string[] {
+  const result: string[] = [];
+  let cur = '';
+  let inQuote = false;
+  for (let i = 0; i < line.length; i++) {
+    const ch = line[i];
+    if (ch === '"') { inQuote = !inQuote; }
+    else if (ch === sep && !inQuote) { result.push(cur); cur = ''; }
+    else { cur += ch; }
+  }
+  result.push(cur);
+  return result;
+}
+
+type SearchHit = { name: string; detail: string; source: string };
+
+function searchFileContent(content: string, fileType: string, query: string, source: string): SearchHit[] {
+  const q = query.toLowerCase();
+  const results: SearchHit[] = [];
+
+  if (fileType === 'csv' || fileType === 'tsv') {
+    const sep = fileType === 'tsv' ? '\t' : ',';
+    const lines = content.split('\n').filter(Boolean);
+    if (lines.length < 2) return results;
+
+    const headers = parseCSVLine(lines[0], sep).map(h => h.trim().toLowerCase().replace(/['"]/g, ''));
+    const NAME_KEYS = ['name', 'employee', 'vendor', 'company', 'person', 'supplier', 'contractor', 'payee', 'recipient', 'full_name', 'first_name', 'contact', 'entity', 'organization'];
+    const DETAIL_KEYS = ['title', 'role', 'department', 'position', 'category', 'type', 'email', 'amount', 'description', 'branch', 'division'];
+    const nameIdx = headers.findIndex(h => NAME_KEYS.some(k => h.includes(k)));
+    const detailIdx = headers.findIndex(h => DETAIL_KEYS.some(k => h.includes(k)));
+    if (nameIdx === -1) return results;
+
+    for (const line of lines.slice(1, 2000)) {
+      const cols = parseCSVLine(line, sep);
+      const name = (cols[nameIdx] ?? '').replace(/['"]/g, '').trim();
+      if (name.length < 2 || !name.toLowerCase().includes(q)) continue;
+      const detail = detailIdx >= 0 ? (cols[detailIdx] ?? '').replace(/['"]/g, '').trim() : '';
+      results.push({ name, detail, source });
+      if (results.length >= 20) break;
+    }
+  } else if (fileType === 'json') {
+    let data: unknown;
+    try { data = JSON.parse(content); } catch { return results; }
+    const items = Array.isArray(data) ? data : ((data as Record<string, unknown>).data || (data as Record<string, unknown>).items || (data as Record<string, unknown>).records || [data]);
+    for (const item of (items as unknown[]).slice(0, 2000)) {
+      if (typeof item !== 'object' || !item) continue;
+      const obj = item as Record<string, unknown>;
+      const nameKey = Object.keys(obj).find(k => ['name', 'employee', 'vendor', 'company', 'person', 'full_name', 'contact', 'entity'].some(kw => k.toLowerCase().includes(kw)));
+      if (!nameKey) continue;
+      const name = String(obj[nameKey]);
+      if (name.length < 2 || !name.toLowerCase().includes(q)) continue;
+      const detailKey = Object.keys(obj).find(k => ['title', 'role', 'department', 'position', 'email', 'category'].some(kw => k.toLowerCase().includes(kw)));
+      results.push({ name, detail: detailKey ? String(obj[detailKey]) : '', source });
+      if (results.length >= 20) break;
+    }
+  } else {
+    // TXT: return matching lines
+    for (const line of content.split('\n')) {
+      const trimmed = line.trim();
+      if (trimmed.length >= 2 && trimmed.length <= 200 && trimmed.toLowerCase().includes(q)) {
+        results.push({ name: trimmed.slice(0, 100), detail: '', source });
+        if (results.length >= 20) break;
+      }
+    }
+  }
+
+  return results;
 }
 
 function parseOrgName(title: string): string {
@@ -140,6 +212,36 @@ router.delete('/files/:id', requireAuth, (req: Request, res: Response) => {
 
   orgFileQueries.deleteById.run(fileId, userId);
   res.json({ success: true });
+});
+
+// GET /api/org/search-data?q=&mode= — search through user's uploaded files
+router.get('/search-data', requireAuth, (req: Request, res: Response) => {
+  const { userId } = (req as Request & { user: JwtPayload }).user;
+  const q = String(req.query.q ?? '').trim();
+  if (q.length < 2) { res.json([]); return; }
+
+  const files = orgFileQueries.listByUser.all(userId);
+  if (files.length === 0) { res.json([]); return; }
+
+  const allResults: SearchHit[] = [];
+  for (const file of files) {
+    if (!file.content) continue;
+    try {
+      const hits = searchFileContent(file.content, file.file_type, q, file.original_name);
+      allResults.push(...hits);
+    } catch { /* skip malformed files */ }
+  }
+
+  // Deduplicate by name
+  const seen = new Set<string>();
+  const unique = allResults.filter(r => {
+    const key = r.name.toLowerCase();
+    if (seen.has(key)) return false;
+    seen.add(key);
+    return true;
+  });
+
+  res.json(unique.slice(0, 12));
 });
 
 // POST /api/org/complete-setup — mark data setup as complete

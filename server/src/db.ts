@@ -23,7 +23,9 @@ db.exec(`
     org_name TEXT,
     org_type TEXT,
     org_display_name TEXT,
-    onboarding_complete INTEGER NOT NULL DEFAULT 0
+    onboarding_complete INTEGER NOT NULL DEFAULT 0,
+    survey_complete INTEGER NOT NULL DEFAULT 0,
+    org_survey TEXT
   );
 `);
 
@@ -46,6 +48,8 @@ for (const sql of [
   'ALTER TABLE users ADD COLUMN org_display_name TEXT',
   'ALTER TABLE users ADD COLUMN onboarding_complete INTEGER NOT NULL DEFAULT 0',
   'ALTER TABLE users ADD COLUMN data_setup_complete INTEGER NOT NULL DEFAULT 0',
+  'ALTER TABLE users ADD COLUMN survey_complete INTEGER NOT NULL DEFAULT 0',
+  'ALTER TABLE users ADD COLUMN org_survey TEXT',
 ]) {
   try { db.exec(sql); } catch { /* column already exists */ }
 }
@@ -58,12 +62,12 @@ const existing = db.prepare('SELECT id FROM users WHERE email = ?').get(ADMIN_EM
 if (!existing) {
   const hash = bcrypt.hashSync(ADMIN_PASSWORD, 12);
   db.prepare(
-    'INSERT INTO users (email, password_hash, role, onboarding_complete, data_setup_complete) VALUES (?, ?, ?, 1, 1)'
+    'INSERT INTO users (email, password_hash, role, onboarding_complete, survey_complete, data_setup_complete) VALUES (?, ?, ?, 1, 1, 1)'
   ).run(ADMIN_EMAIL, hash, 'admin');
   console.log('[db] Admin account seeded');
 } else {
-  // Ensure existing admin always has onboarding bypassed
-  db.prepare('UPDATE users SET onboarding_complete = 1, data_setup_complete = 1 WHERE email = ?').run(ADMIN_EMAIL);
+  // Ensure existing admin always has all onboarding stages bypassed
+  db.prepare('UPDATE users SET onboarding_complete = 1, survey_complete = 1, data_setup_complete = 1 WHERE email = ?').run(ADMIN_EMAIL);
 }
 
 export interface User {
@@ -76,7 +80,9 @@ export interface User {
   org_type: string | null;
   org_display_name: string | null;
   onboarding_complete: number;
+  survey_complete: number;
   data_setup_complete: number;
+  org_survey: string | null;
 }
 
 export interface OrgFile {
@@ -97,6 +103,9 @@ export const userQueries = {
   ),
   updateOrg: db.prepare<[string, string, string, number], void>(
     'UPDATE users SET org_name = ?, org_type = ?, org_display_name = ?, onboarding_complete = 1 WHERE id = ?'
+  ),
+  updateSurvey: db.prepare<[string, number], void>(
+    'UPDATE users SET org_survey = ?, survey_complete = 1 WHERE id = ?'
   ),
   count: db.prepare<[], { n: number }>('SELECT COUNT(*) as n FROM users'),
   markDataSetupComplete: db.prepare<[number], void>('UPDATE users SET data_setup_complete = 1 WHERE id = ?'),

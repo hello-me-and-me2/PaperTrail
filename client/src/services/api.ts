@@ -1,5 +1,5 @@
 import axios from 'axios';
-import { CorruptionAnalysis, OrgSuggestion, SearchResponse } from '../types';
+import { CorruptionAnalysis, OrgSuggestion, OrgSurvey, OrgDataHit, SearchResponse } from '../types';
 
 const client = axios.create({ baseURL: '/api', timeout: 45000 });
 
@@ -59,4 +59,13 @@ export async function listOrgFiles(): Promise<{ id: number; original_name: strin
 
 export async function deleteOrgFile(id: number): Promise<void> {
   await authClient.delete(`/org/files/${id}`);
+}
+
+export async function saveSurvey(survey: OrgSurvey): Promise<void> {
+  await authClient.post('/auth/survey', survey);
+}
+
+export async function searchOrgData(q: string): Promise<OrgDataHit[]> {
+  const { data } = await authClient.get('/org/search-data', { params: { q } });
+  return data;
 }

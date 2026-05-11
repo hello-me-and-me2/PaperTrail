@@ -1,5 +1,6 @@
 import { createContext, useContext, useState, useEffect, ReactNode } from 'react';
 import axios from 'axios';
+import { OrgSurvey } from '../types';
 
 export interface AuthUser {
   id: number;
@@ -9,7 +10,9 @@ export interface AuthUser {
   orgType: string | null;
   orgDisplayName: string | null;
   onboardingComplete: boolean;
+  surveyComplete: boolean;
   dataSetupComplete: boolean;
+  orgSurvey: OrgSurvey | null;
 }
 
 interface AuthState {
@@ -23,6 +26,7 @@ interface AuthContextValue extends AuthState {
   signup: (email: string, password: string) => Promise<void>;
   logout: () => void;
   completeOnboarding: (data: { org_name: string; org_type: string; org_display_name: string }) => Promise<void>;
+  completeSurvey: (data: OrgSurvey) => Promise<void>;
   completeDataSetup: () => Promise<void>;
 }
 
@@ -70,6 +74,14 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     setState((s) => ({ ...s, user: result.user }));
   }
 
+  async function completeSurvey(data: OrgSurvey) {
+    if (!state.token) return;
+    const { data: result } = await axios.post('/api/auth/survey', data, {
+      headers: authHeader(state.token),
+    });
+    setState((s) => ({ ...s, user: result.user }));
+  }
+
   async function completeDataSetup() {
     if (!state.token) return;
     const { data: result } = await axios.post('/api/org/complete-setup', {}, {
@@ -79,7 +91,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
   }
 
   return (
-    <AuthContext.Provider value={{ ...state, login, signup, logout, completeOnboarding, completeDataSetup }}>
+    <AuthContext.Provider value={{ ...state, login, signup, logout, completeOnboarding, completeSurvey, completeDataSetup }}>
       {children}
     </AuthContext.Provider>
   );
