@@ -9,6 +9,11 @@ import searchRouter from './routes/search';
 import analysisRouter from './routes/analysis';
 import investigateRouter from './routes/investigate';
 import orgRouter from './routes/org';
+import alertsRouter from './routes/alerts';
+import connectionsRouter from './routes/connections';
+import pushRouter from './routes/push';
+import { initVapid } from './services/pushService';
+import { startMonitor } from './services/monitor';
 
 const app = express();
 const PORT = process.env.PORT || 3001;
@@ -31,6 +36,12 @@ app.use('/api/search', searchRouter);
 app.use('/api/analysis', analysisRouter);
 app.use('/api/investigate', investigateRouter);
 app.use('/api/org', orgRouter);
+app.use('/api/alerts', alertsRouter);
+app.use('/api/connections', connectionsRouter);
+app.use('/api/push', pushRouter);
+
+// Webhook endpoint receives raw body — must come before express.json() override
+app.use('/api/connections/webhook', express.text({ type: '*/*', limit: '5mb' }));
 
 app.get('/api/health', (_req, res) => {
   res.json({ status: 'ok', timestamp: new Date().toISOString() });
@@ -43,5 +54,9 @@ if (fs.existsSync(clientDist)) {
   app.get('*', (_req, res) => res.sendFile(path.join(clientDist, 'index.html')));
 }
 
-app.listen(PORT, () => console.log(`PaperTrail running on http://localhost:${PORT}`));
+app.listen(PORT, () => {
+  console.log(`PaperTrail running on http://localhost:${PORT}`);
+  initVapid();
+  startMonitor();
+});
 export default app;

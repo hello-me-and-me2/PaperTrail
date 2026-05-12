@@ -1,6 +1,29 @@
 import { createContext, useContext, useState, useEffect, ReactNode } from 'react';
 import axios from 'axios';
 import { OrgSurvey } from '../types';
+import { getVapidPublicKey, savePushSubscription } from '../services/api';
+
+async function registerPush() {
+  if (!('serviceWorker' in navigator) || !('PushManager' in window)) return;
+  try {
+    const reg = await navigator.serviceWorker.register('/sw.js');
+    const publicKey = await getVapidPublicKey();
+    const existing = await reg.pushManager.getSubscription();
+    if (existing) { await savePushSubscription(existing.toJSON()); return; }
+    const sub = await reg.pushManager.subscribe({
+      userVisibleOnly: true,
+      applicationServerKey: urlBase64ToUint8Array(publicKey),
+    });
+    await savePushSubscription(sub.toJSON());
+  } catch { /* push not available or denied */ }
+}
+
+function urlBase64ToUint8Array(base64String: string) {
+  const padding = '='.repeat((4 - (base64String.length % 4)) % 4);
+  const base64 = (base64String + padding).replace(/-/g, '+').replace(/_/g, '/');
+  const raw = window.atob(base64);
+  return Uint8Array.from([...raw].map((c) => c.charCodeAt(0)));
+}
 
 export interface AuthUser {
   id: number;
@@ -53,6 +76,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     const { data } = await axios.post('/api/auth/login', { email, password });
     localStorage.setItem(TOKEN_KEY, data.token);
     setState({ user: data.user, token: data.token, loading: false });
+    registerPush();
   }
 
   async function signup(email: string, password: string) {
@@ -60,6 +84,11 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     localStorage.setItem(TOKEN_KEY, data.token);
     setState({ user: data.user, token: data.token, loading: false });
   }
+
+  useEffect(() => {
+    if (state.user) registerPush();
+  // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [!!state.user]);
 
   function logout() {
     localStorage.removeItem(TOKEN_KEY);

@@ -139,3 +139,30 @@ export interface DataRecommendation {
   priority: 'high' | 'medium' | 'low';
   fileTypes: string;
 }
+
+export interface CorruptionAlert {
+  id: number;
+  user_id: number;
+  title: string;
+  description: string;
+  severity: 'LOW' | 'MODERATE' | 'HIGH' | 'CRITICAL';
+  entity_name: string;
+  entity_type: string;
+  score: number;
+  analysis_url: string | null;
+  detected_at: string;
+  read_at: string | null;
+  email_sent: number;
+  push_sent: number;
+}
+
+export interface OrgConnection {
+  id: number;
+  service: string;
+  label: string | null;
+  status: string;
+  webhookToken: string | null;
+  lastSyncAt: string | null;
+  connectedAt: string;
+  webhookUrl?: string;
+}

@@ -2,7 +2,7 @@ import { Navigate } from 'react-router-dom';
 import { useAuth } from '../contexts/AuthContext';
 import Onboarding from '../pages/Onboarding';
 import BusinessSurvey from '../pages/BusinessSurvey';
-import DataSetup from '../pages/DataSetup';
+import DataConnections from '../pages/DataConnections';
 
 export default function ProtectedRoute({ children }: { children: React.ReactNode }) {
   const { user, loading } = useAuth();
@@ -18,7 +18,7 @@ export default function ProtectedRoute({ children }: { children: React.ReactNode
   if (!user) return <Navigate to="/login" replace />;
   if (!user.onboardingComplete) return <Onboarding />;
   if (!user.surveyComplete) return <BusinessSurvey />;
-  if (!user.dataSetupComplete) return <DataSetup />;
+  if (!user.dataSetupComplete) return <DataConnections />;
 
   return <>{children}</>;
 }

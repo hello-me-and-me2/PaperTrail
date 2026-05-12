@@ -1,5 +1,5 @@
 import axios from 'axios';
-import { CorruptionAnalysis, OrgSuggestion, OrgSurvey, OrgDataHit, SearchResponse } from '../types';
+import { CorruptionAnalysis, OrgSuggestion, OrgSurvey, OrgDataHit, CorruptionAlert, OrgConnection, SearchResponse } from '../types';
 
 const client = axios.create({ baseURL: '/api', timeout: 45000 });
 
@@ -68,4 +68,48 @@ export async function saveSurvey(survey: OrgSurvey): Promise<void> {
 export async function searchOrgData(q: string): Promise<OrgDataHit[]> {
   const { data } = await authClient.get('/org/search-data', { params: { q } });
   return data;
+}
+
+// Alerts
+export async function getAlerts(): Promise<CorruptionAlert[]> {
+  const { data } = await authClient.get('/alerts');
+  return data;
+}
+export async function getUnreadCount(): Promise<number> {
+  const { data } = await authClient.get('/alerts/unread');
+  return data.count;
+}
+export async function markAlertRead(id: number): Promise<void> {
+  await authClient.patch(`/alerts/${id}/read`);
+}
+export async function markAllAlertsRead(): Promise<void> {
+  await authClient.post('/alerts/read-all');
+}
+
+// Connections
+export async function getConnections(): Promise<OrgConnection[]> {
+  const { data } = await authClient.get('/connections');
+  return data;
+}
+export async function addConnection(service: string, label?: string, credentials?: Record<string, string>): Promise<OrgConnection> {
+  const { data } = await authClient.post('/connections', { service, label, credentials });
+  return data;
+}
+export async function deleteConnection(id: number): Promise<void> {
+  await authClient.delete(`/connections/${id}`);
+}
+
+// Push notifications
+export async function getVapidPublicKey(): Promise<string> {
+  const { data } = await client.get('/push/vapid-key');
+  return data.publicKey;
+}
+export async function savePushSubscription(sub: PushSubscriptionJSON): Promise<void> {
+  await authClient.post('/push/subscribe', {
+    endpoint: sub.endpoint,
+    keys: sub.keys,
+  });
+}
+export async function removePushSubscription(endpoint: string): Promise<void> {
+  await authClient.delete('/push/subscribe', { data: { endpoint } });
 }

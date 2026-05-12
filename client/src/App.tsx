@@ -5,6 +5,7 @@ import Header from './components/Header';
 import Home from './pages/Home';
 import Analysis from './pages/Analysis';
 import Investigate from './pages/Investigate';
+import Alerts from './pages/Alerts';
 import Login from './pages/Login';
 import Signup from './pages/Signup';
 
@@ -26,6 +27,7 @@ export default function App() {
                 <Routes>
                   <Route path="/" element={<Home />} />
                   <Route path="/investigate" element={<Investigate />} />
+                  <Route path="/alerts" element={<Alerts />} />
                   <Route path="/analysis/:type/:name" element={<Analysis />} />
                   <Route path="*" element={<Navigate to="/" replace />} />
                 </Routes>

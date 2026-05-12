@@ -1,13 +1,32 @@
 import { Link, useLocation, useNavigate } from 'react-router-dom';
-import { FileText, Crosshair, LogOut, ShieldCheck } from 'lucide-react';
+import { FileText, Crosshair, LogOut, ShieldCheck, AlertTriangle } from 'lucide-react';
 import { useAuth } from '../contexts/AuthContext';
+import { useEffect, useState, useCallback } from 'react';
+import { getUnreadCount } from '../services/api';
 
 export default function Header() {
   const location = useLocation();
   const navigate = useNavigate();
   const { user, logout } = useAuth();
+  const [unreadAlerts, setUnreadAlerts] = useState(0);
 
   const isInvestigate = location.pathname === '/investigate';
+  const isAlerts = location.pathname === '/alerts';
+
+  const refreshUnread = useCallback(() => {
+    if (!user) return;
+    getUnreadCount().then(setUnreadAlerts).catch(() => {});
+  }, [user]);
+
+  useEffect(() => {
+    refreshUnread();
+    const id = setInterval(refreshUnread, 60_000);
+    return () => clearInterval(id);
+  }, [refreshUnread]);
+
+  useEffect(() => {
+    if (isAlerts) setUnreadAlerts(0);
+  }, [isAlerts]);
 
   function handleLogout() {
     logout();
@@ -43,6 +62,23 @@ export default function Header() {
           >
             <Crosshair className="w-4 h-4" />
             <span className="hidden sm:inline">Investigate</span>
+          </Link>
+
+          <Link
+            to="/alerts"
+            className={`relative flex items-center gap-1.5 text-sm font-medium px-3 py-1.5 rounded-lg transition-colors ${
+              isAlerts
+                ? 'bg-yellow-500/20 text-yellow-400'
+                : 'text-slate-400 hover:text-white hover:bg-dark-600'
+            }`}
+          >
+            <AlertTriangle className="w-4 h-4" />
+            <span className="hidden sm:inline">Alerts</span>
+            {unreadAlerts > 0 && (
+              <span className="absolute -top-1 -right-1 min-w-[18px] h-[18px] rounded-full bg-red-500 text-white text-[10px] font-bold flex items-center justify-center px-1 leading-none">
+                {unreadAlerts > 99 ? '99+' : unreadAlerts}
+              </span>
+            )}
           </Link>
 
           {user && (
