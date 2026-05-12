@@ -8,6 +8,7 @@ import Investigate from './pages/Investigate';
 import Alerts from './pages/Alerts';
 import Login from './pages/Login';
 import Signup from './pages/Signup';
+import NotificationPrompt from './components/NotificationPrompt';
 
 export default function App() {
   return (
@@ -24,6 +25,7 @@ export default function App() {
             element={
               <ProtectedRoute>
                 <Header />
+                <NotificationPrompt />
                 <Routes>
                   <Route path="/" element={<Home />} />
                   <Route path="/investigate" element={<Investigate />} />
