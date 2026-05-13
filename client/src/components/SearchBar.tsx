@@ -124,8 +124,9 @@ export default function SearchBar({ autoFocus = false }: { autoFocus?: boolean }
 
   return (
     <div className="relative w-full max-w-2xl" ref={dropRef}>
-      <form onSubmit={handleSubmit} className="relative">
-        <div className="flex items-center bg-dark-700 border-2 border-dark-500 focus-within:border-accent rounded-xl transition-colors overflow-hidden shadow-2xl">
+      <form onSubmit={handleSubmit}>
+        {/* Input row — always full width */}
+        <div className="flex items-center bg-dark-700 border-2 border-dark-500 focus-within:border-accent rounded-xl sm:rounded-b-none sm:border-b-0 transition-colors overflow-hidden shadow-2xl">
           <div className="pl-4 pr-2 flex items-center">
             {loading
               ? <Loader2 className="w-5 h-5 text-accent animate-spin" />
@@ -141,7 +142,7 @@ export default function SearchBar({ autoFocus = false }: { autoFocus?: boolean }
             onKeyDown={handleKeyDown}
             onFocus={() => (suggestions.length > 0 || noData) && setShowDrop(true)}
             placeholder={placeholder}
-            className="flex-1 bg-transparent py-4 px-2 text-white placeholder-slate-500 outline-none text-base"
+            className="flex-1 bg-transparent py-4 px-2 text-white placeholder-slate-500 outline-none text-sm sm:text-base"
             autoComplete="off"
           />
 
@@ -151,7 +152,8 @@ export default function SearchBar({ autoFocus = false }: { autoFocus?: boolean }
             </button>
           )}
 
-          <div className="border-l border-dark-500 flex">
+          {/* Mode tabs — hidden on mobile, shown inline on sm+ */}
+          <div className="hidden sm:flex border-l border-dark-500">
             {ORG_MODE_OPTIONS.map((opt) => {
               const Icon = opt.icon;
               return (
@@ -171,14 +173,32 @@ export default function SearchBar({ autoFocus = false }: { autoFocus?: boolean }
           <button
             type="submit"
             disabled={!query.trim() || noData || suggestions.length === 0}
-            className="bg-accent hover:bg-blue-600 disabled:opacity-40 disabled:cursor-not-allowed text-white font-semibold px-5 py-4 transition-colors"
+            className="bg-accent hover:bg-blue-600 disabled:opacity-40 disabled:cursor-not-allowed text-white font-semibold px-4 sm:px-5 py-4 transition-colors"
           >
             <Search className="w-4 h-4" />
           </button>
         </div>
+
+        {/* Mode tabs — mobile only, shown as a full-width row below the input */}
+        <div className="flex sm:hidden bg-dark-700 border-2 border-t-0 border-dark-500 rounded-b-xl overflow-hidden">
+          {ORG_MODE_OPTIONS.map((opt) => {
+            const Icon = opt.icon;
+            return (
+              <button
+                key={opt.value}
+                type="button"
+                onClick={() => { setMode(opt.value); setSuggestions([]); setShowDrop(false); setNoData(false); }}
+                className={`flex-1 flex flex-col items-center gap-1 py-2.5 text-[10px] font-medium transition-colors ${mode === opt.value ? 'text-accent bg-dark-600' : 'text-slate-500 active:bg-dark-600'}`}
+              >
+                <Icon className="w-4 h-4" />
+                {opt.label}
+              </button>
+            );
+          })}
+        </div>
       </form>
 
-      <p className="text-xs text-slate-500 mt-1.5 ml-1">{currentMode.hint}</p>
+      <p className="text-xs text-slate-500 mt-1.5 ml-1 hidden sm:block">{currentMode.hint}</p>
 
       {showDrop && (
         <div className="absolute top-full left-0 right-0 mt-2 bg-dark-700 border border-dark-500 rounded-xl shadow-2xl overflow-hidden z-50">
