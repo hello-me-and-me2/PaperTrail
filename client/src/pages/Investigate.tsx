@@ -199,8 +199,9 @@ export default function Investigate() {
 
               {inputs.map((inp, i) => (
                 <div key={i} className="space-y-1.5 bg-dark-700 border border-dark-500 rounded-xl p-3">
-                  <div className="flex items-center gap-1 mb-2">
-                    <div className="flex rounded-lg overflow-hidden border border-dark-500 flex-1">
+                  <div className="flex items-start gap-1 mb-2">
+                    {/* 2×2 grid so labels never get cut off in the narrow sidebar */}
+                    <div className="grid grid-cols-2 gap-1 flex-1">
                       {MODE_OPTIONS.map((opt) => {
                         const Icon = opt.icon;
                         const active = inp.mode === opt.value;
@@ -210,18 +211,20 @@ export default function Investigate() {
                             type="button"
                             title={opt.hint}
                             onClick={() => updateInput(i, { mode: opt.value })}
-                            className={`flex-1 flex items-center justify-center gap-1 px-1.5 py-1.5 text-[11px] font-medium transition-colors ${
-                              active ? 'bg-dark-500 text-accent' : 'text-slate-500 hover:text-slate-300'
+                            className={`flex items-center gap-1.5 px-2 py-1.5 rounded-lg text-xs font-medium transition-colors border ${
+                              active
+                                ? 'bg-dark-500 text-accent border-accent/40'
+                                : 'text-slate-500 hover:text-slate-300 border-dark-500 hover:border-dark-400'
                             }`}
                           >
                             <Icon className="w-3 h-3 shrink-0" />
-                            <span className="hidden sm:inline truncate">{opt.label}</span>
+                            {opt.label}
                           </button>
                         );
                       })}
                     </div>
                     {inputs.length > 1 && (
-                      <button onClick={() => removeInput(i)} className="ml-1 text-slate-600 hover:text-red-400 transition-colors shrink-0">
+                      <button onClick={() => removeInput(i)} className="mt-0.5 ml-1 text-slate-600 hover:text-red-400 transition-colors shrink-0">
                         <X className="w-3.5 h-3.5" />
                       </button>
                     )}
