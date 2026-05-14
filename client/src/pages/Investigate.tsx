@@ -287,9 +287,12 @@ export default function Investigate() {
                 {duration > 0 ? 'Start & Schedule' : 'Start Investigation'}
               </button>
 
-              <div className="bg-dark-600 border border-dark-500 rounded-xl p-3 text-xs text-slate-500 leading-relaxed">
-                <p className="font-semibold text-slate-400 mb-1">How it works</p>
-                <p>Search your connected data to pick entities. The AI then investigates them using public records and auto-discovers related parties. Set a duration to keep monitoring in the background.</p>
+              <div className="bg-dark-600 border border-dark-500 rounded-xl p-3 text-xs text-slate-500 leading-relaxed space-y-2">
+                <p className="font-semibold text-slate-400">How risk analysis works</p>
+                <p><span className="text-slate-400">1. Data gathering —</span> pulls federal contracts &amp; grants from USASpending.gov, regulatory actions and debarments from the Federal Register, and news/investigation records from web sources.</p>
+                <p><span className="text-slate-400">2. Seven risk factors —</span> no-bid contracts, award concentration, emergency-justification abuse, cost-plus &amp; T&amp;M contract types, single-bid awards, regulatory/legal flags, and statistical spending outliers vs. peers.</p>
+                <p><span className="text-slate-400">3. AI scoring —</span> Claude synthesizes all sources into a 0–100 risk score (LOW / MODERATE / HIGH / CRITICAL). HIGH or CRITICAL triggers an immediate alert, email, and push notification.</p>
+                <p><span className="text-slate-400">4. Auto-discovery —</span> related agencies and contractors found in the data are queued and analyzed automatically.</p>
               </div>
             </>
           )}
