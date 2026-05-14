@@ -327,10 +327,12 @@ export default function Home() {
   return (
     <div className="min-h-screen" style={PAPER_BG}>
       {/* ── Hero ── */}
-      <div className="relative overflow-hidden">
+      <div className="relative">
+        {/* Decorative trail — clipped independently so it doesn't affect dropdown overflow */}
+        <div className="absolute inset-0 overflow-hidden pointer-events-none select-none">
         <svg
           viewBox="0 0 200 185"
-          className="absolute bottom-0 right-4 sm:right-14 w-32 sm:w-44 opacity-[0.19] pointer-events-none select-none"
+          className="absolute bottom-0 right-4 sm:right-14 w-32 sm:w-44 opacity-[0.19]"
           xmlns="http://www.w3.org/2000/svg"
         >
           <path d="M 30 175 C 40 155 25 132 55 117 S 82 90 92 74 S 122 52 142 37 S 168 20 178 10"
@@ -344,6 +346,7 @@ export default function Home() {
             <line key={i} x1={x1} y1={y1} x2={x2} y2={y2} stroke="#5a7a3a" strokeWidth="1.5" strokeLinecap="round" />
           ))}
         </svg>
+        </div>
 
         <div className="relative max-w-4xl mx-auto px-4 pt-20 pb-16 text-center">
           <div className="inline-flex items-center gap-2 bg-white/70 border border-blue-100 rounded-full px-3 py-1.5 text-xs text-slate-600 mb-6 shadow-sm">
