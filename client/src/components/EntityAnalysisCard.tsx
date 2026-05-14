@@ -81,12 +81,7 @@ export default function EntityAnalysisCard({ entity, index }: Props) {
           )}
           {entity.status === 'complete' && analysis && (
             <div className="flex items-center gap-2">
-              <span className={`text-xl font-bold mono ${
-                analysis.riskLevel === 'CRITICAL' ? 'text-red-400' :
-                analysis.riskLevel === 'HIGH'     ? 'text-orange-400' :
-                analysis.riskLevel === 'MODERATE' ? 'text-yellow-400' : 'text-green-400'
-              }`}>{analysis.overallScore}</span>
-              <RiskBadge level={analysis.riskLevel} size="sm" />
+              <CorruptionScore score={analysis.overallScore} level={analysis.riskLevel} size="sm" />
             </div>
           )}
         </div>

@@ -289,10 +289,10 @@ export default function Investigate() {
 
               <div className="bg-dark-600 border border-dark-500 rounded-xl p-3 text-xs text-slate-500 leading-relaxed space-y-2">
                 <p className="font-semibold text-slate-400">How risk analysis works</p>
-                <p><span className="text-slate-400">1. Data gathering —</span> pulls federal contracts &amp; grants from USASpending.gov, regulatory actions and debarments from the Federal Register, and news/investigation records from web sources.</p>
-                <p><span className="text-slate-400">2. Seven risk factors —</span> no-bid contracts, award concentration, emergency-justification abuse, cost-plus &amp; T&amp;M contract types, single-bid awards, regulatory/legal flags, and statistical spending outliers vs. peers.</p>
-                <p><span className="text-slate-400">3. AI scoring —</span> Claude synthesizes all sources into a 0–100 risk score (LOW / MODERATE / HIGH / CRITICAL). HIGH or CRITICAL triggers an immediate alert, email, and push notification.</p>
-                <p><span className="text-slate-400">4. Auto-discovery —</span> related agencies and contractors found in the data are queued and analyzed automatically.</p>
+                <p><span className="text-slate-400">1. Your data —</span> scans your connected files, uploaded documents, and integrated data sources — financial records, vendor lists, contracts, and transaction history you've linked to PaperTrail.</p>
+                <p><span className="text-slate-400">2. Seven risk factors —</span> no-bid patterns, payment concentration, emergency-justification abuse, high-risk contract types, single-source awards, regulatory flags, and statistical spending outliers detected across your data.</p>
+                <p><span className="text-slate-400">3. AI scoring —</span> Claude synthesizes your data into a risk meter (LOW → CRITICAL). HIGH or CRITICAL triggers an immediate alert, email, and push notification.</p>
+                <p><span className="text-slate-400">4. Auto-discovery —</span> related vendors and entities found within your connected data are queued and analyzed automatically.</p>
               </div>
             </>
           )}
