@@ -1,4 +1,4 @@
-import { useState, useEffect, useRef } from 'react';
+import { useState, useEffect, useRef, useCallback } from 'react';
 import {
   Shield, TrendingUp, FileSearch, AlertTriangle, Lock,
   Building2, Landmark, Users, Crosshair, BarChart3, ArrowRight,
@@ -68,9 +68,6 @@ const PAPER_BG: React.CSSProperties = {
   ].join(', '),
 };
 
-const ORG_TYPE_ANALYSIS: Record<string, 'recipient' | 'agency' | 'person'> = {
-  government_agency: 'agency', organization: 'recipient', company: 'recipient',
-};
 
 const ORG_TYPE_LABELS: Record<string, string> = {
   government_agency: 'Government Agency', organization: 'Organization', company: 'Company',
@@ -322,7 +319,14 @@ export default function Home() {
   const { user } = useAuth();
   const orgName = user?.orgDisplayName ?? user?.orgName ?? '';
   const orgType = user?.orgType ?? '';
-  const analysisType = ORG_TYPE_ANALYSIS[orgType] ?? 'recipient';
+  const searchSectionRef = useRef<HTMLDivElement>(null);
+
+  const handleAnalyzeClick = useCallback(() => {
+    searchSectionRef.current?.scrollIntoView({ behavior: 'smooth', block: 'center' });
+    setTimeout(() => {
+      searchSectionRef.current?.querySelector<HTMLInputElement>('input')?.focus();
+    }, 400);
+  }, []);
 
   return (
     <div className="min-h-screen" style={PAPER_BG}>
@@ -371,13 +375,13 @@ export default function Home() {
 
           {orgName && (
             <div className="flex flex-wrap justify-center gap-3 mb-8">
-              <Link
-                to={`/analysis/${analysisType}/${encodeURIComponent(orgName)}`}
+              <button
+                onClick={handleAnalyzeClick}
                 className="flex items-center gap-2 bg-accent hover:bg-blue-600 text-white font-semibold px-5 py-3 rounded-xl transition-colors shadow-sm text-sm"
               >
                 <ArrowRight className="w-4 h-4" />
                 Analyze {orgName}
-              </Link>
+              </button>
               <Link
                 to="/investigate"
                 className="flex items-center gap-2 bg-white/70 hover:bg-white border border-slate-200 hover:border-accent/40 text-slate-700 hover:text-accent text-sm font-medium px-5 py-3 rounded-xl transition-all shadow-sm"
@@ -391,7 +395,7 @@ export default function Home() {
           <p className="text-xs text-slate-500 mb-2">
             {orgName ? 'Or search a specific vendor, contractor, or person in your data:' : 'Search a vendor, contractor, or entity:'}
           </p>
-          <div className="flex justify-center mb-4">
+          <div ref={searchSectionRef} className="flex justify-center mb-4">
             <SearchBar autoFocus={!orgName} />
           </div>
 

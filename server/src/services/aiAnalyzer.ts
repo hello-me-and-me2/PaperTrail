@@ -122,8 +122,13 @@ function buildPrompt(
     ? `=== ORGANIZATION CONTEXT ===\nThis analysis is requested by ${orgContext}. Focus on this entity's relationship to ${orgContext} — personnel connections, financial flows, contract relationships, and risks relevant to ${orgContext}.\n\n`
     : '';
 
+  // Extract the source file names from the tagged orgData so we can list them
+  const orgFileNames = orgData
+    ? [...orgData.matchAll(/\[SOURCE FILE: ([^\]]+)\]/g)].map(m => m[1])
+    : [];
+
   const orgDataSection = orgData
-    ? `=== INTERNAL ORGANIZATION DATA (${orgContext ?? 'Requesting Org'}) ===\n${orgData.slice(0, 8000)}\n\n`
+    ? `=== INTERNAL ORGANIZATION DATA (${orgContext ?? 'Requesting Org'}) ===\nIMPORTANT: Each section below is prefixed with [SOURCE FILE: <filename>]. When generating evidence items from this internal data, use the actual filename (e.g. "vendors_Q2.csv") as the sourceLabel — NOT "USASpending.gov" or other external sources.\n\n${orgData.slice(0, 8000)}\n\n`
     : '';
 
   return `${orgContextSection}${orgDataSection}Analyze this entity comprehensively:
@@ -185,7 +190,7 @@ Respond with ONLY valid JSON — no markdown fences, no commentary outside the J
   "totalAmount": ${total},
   "topContracts": [],
   "summary": <string: 3-4 sentences overview citing key findings, specific evidence, and which sources were most significant>,
-  "dataSource": "USASpending.gov, FederalRegister.gov, Web Research",
+  "dataSource": "${orgFileNames.length > 0 ? orgFileNames.join(', ') + ', ' : ''}USASpending.gov, FederalRegister.gov, Web Research",
   "lastUpdated": "${new Date().toISOString()}"
 }`;
 }
@@ -227,7 +232,12 @@ export async function aiAnalyzeEntity(
   analysis.totalAmount  = data.awards.reduce((s, a) => s + (a['Award Amount'] || 0), 0);
   analysis.lastUpdated  = new Date().toISOString();
 
+  const orgFiles = orgData
+    ? [...orgData.matchAll(/\[SOURCE FILE: ([^\]]+)\]/g)].map(m => m[1])
+    : [];
+
   const sourcesQueried = [
+    ...orgFiles,
     'USASpending.gov',
     ...(data.fedDocs.length   ? ['FederalRegister.gov'] : []),
     ...(data.articles.length  ? ['Web Research (News & Public Records)'] : []),

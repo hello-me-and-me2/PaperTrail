@@ -109,9 +109,9 @@ function getOrgContext(req: Request): { orgContext?: string; orgData?: string } 
       const files = orgFileQueries.listByUser.all(user.userId);
       if (files.length > 0) {
         orgData = files
-          .map(f => f.content ?? '')
+          .map(f => f.content ? `[SOURCE FILE: ${f.original_name}]\n${f.content}` : '')
           .filter(Boolean)
-          .join('\n\n');
+          .join('\n\n---\n\n');
       }
     }
   }

@@ -1,5 +1,5 @@
 import { useState } from 'react';
-import { ExternalLink, ChevronDown, ChevronUp, AlertTriangle, AlertCircle, Info, Zap, ShieldCheck } from 'lucide-react';
+import { ExternalLink, ChevronDown, ChevronUp, AlertTriangle, AlertCircle, Info, Zap, ShieldCheck, Database } from 'lucide-react';
 import { Evidence } from '../types';
 
 interface Props { evidence: Evidence[]; title?: string; }
@@ -11,18 +11,23 @@ const severityConfig = {
   low:      { icon: Info,          cls: 'border-slate-700 bg-dark-600',        badge: 'bg-slate-800 text-slate-400 border-slate-700',   label: 'LOW' },
 };
 
-const sourceColors: Record<string, string> = {
-  'USASpending.gov':                       'bg-blue-950 text-blue-400 border-blue-900',
-  'FederalRegister.gov':                   'bg-amber-950 text-amber-400 border-amber-900',
-  'FederalRegister.gov — Official U.S. Government Record': 'bg-amber-950 text-amber-400 border-amber-900',
-  'USASpending.gov — Official Federal Award Record':       'bg-blue-950 text-blue-400 border-blue-900',
-  'USASpending.gov — Peer-Group Statistical Analysis':     'bg-purple-950 text-purple-400 border-purple-900',
+const KNOWN_SOURCE_COLORS: Record<string, string> = {
+  'USASpending':    'bg-blue-950 text-blue-400 border-blue-900',
+  'FederalRegiste': 'bg-amber-950 text-amber-400 border-amber-900',
+  'Reuters':        'bg-orange-950 text-orange-400 border-orange-900',
+  'ProPublica':     'bg-indigo-950 text-indigo-400 border-indigo-900',
 };
 
+function isOrgFile(label: string) {
+  const knownPrefixes = Object.keys(KNOWN_SOURCE_COLORS);
+  return !knownPrefixes.some(p => label.startsWith(p)) && !label.startsWith('Web') && !label.startsWith('AI');
+}
+
 function sourceClass(label: string) {
-  for (const [key, cls] of Object.entries(sourceColors)) {
-    if (label.includes(key.split(' ')[0])) return cls;
+  for (const [prefix, cls] of Object.entries(KNOWN_SOURCE_COLORS)) {
+    if (label.startsWith(prefix)) return cls;
   }
+  if (isOrgFile(label)) return 'bg-green-950 text-green-400 border-green-900';
   return 'bg-slate-800 text-slate-400 border-slate-700';
 }
 
@@ -77,7 +82,8 @@ export default function EvidencePanel({ evidence, title = 'Evidence' }: Props) {
                       <p className="text-sm text-slate-400 leading-relaxed mb-2">{ev.description}</p>
                       {/* Source + confidence row */}
                       <div className="flex flex-wrap items-center gap-2">
-                        <span className={`text-xs border rounded px-2 py-0.5 font-medium ${sourceClass(ev.sourceLabel)}`}>
+                        <span className={`flex items-center gap-1 text-xs border rounded px-2 py-0.5 font-medium ${sourceClass(ev.sourceLabel)}`}>
+                          {isOrgFile(ev.sourceLabel) && <Database className="w-2.5 h-2.5 shrink-0" />}
                           {ev.sourceLabel.split(' — ')[0]}
                         </span>
                         {ev.confidence != null && (
