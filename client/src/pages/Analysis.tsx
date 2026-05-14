@@ -5,7 +5,6 @@ import {
   Building2,
   Landmark,
   User,
-  ExternalLink,
   ChevronRight,
   Loader2,
   RefreshCw,
@@ -108,12 +107,9 @@ export default function Analysis() {
             <Loader2 className="w-10 h-10 animate-spin text-accent" />
             <div className="text-center">
               <p className="text-white font-medium">
-                {orgContext ? `Analyzing in context of ${orgContext}…` : 'AI is analyzing all available sources…'}
+                {orgContext ? `Analyzing ${decodedName} in context of ${orgContext}…` : `Analyzing ${decodedName}…`}
               </p>
-              <p className="text-sm">Searching news, court records, USASpending.gov &amp; Federal Register — this may take 20–40 seconds</p>
-              {orgContext && data === null && (
-                <p className="text-xs text-accent mt-1">Including your organization's uploaded data</p>
-              )}
+              <p className="text-sm">Scanning your connected data files — this may take 20–40 seconds</p>
             </div>
           </div>
         )}
@@ -168,18 +164,6 @@ export default function Analysis() {
                   </div>
                 </div>
 
-                <div className="flex flex-col gap-2 shrink-0">
-                  <a
-                    href={`https://www.usaspending.gov/search/?query=${encodeURIComponent(data.entityName)}`}
-                    target="_blank"
-                    rel="noopener noreferrer"
-                    className="flex items-center gap-2 text-xs text-accent hover:text-blue-300 border border-dark-500 hover:border-accent/40 rounded-lg px-3 py-2 transition-colors"
-                  >
-                    <Database className="w-3.5 h-3.5" />
-                    View on USASpending.gov
-                    <ExternalLink className="w-3 h-3" />
-                  </a>
-                </div>
               </div>
             </div>
 
@@ -234,9 +218,9 @@ export default function Analysis() {
                 )}
 
                 <div className="card p-4">
-                  <h3 className="text-xs font-semibold text-slate-500 uppercase tracking-wider mb-3">Sources Queried</h3>
+                  <h3 className="text-xs font-semibold text-slate-500 uppercase tracking-wider mb-3">Data Sources</h3>
                   <div className="space-y-1.5">
-                    {(data.sourcesQueried ?? ['USASpending.gov', 'FederalRegister.gov']).map((src) => (
+                    {(data.sourcesQueried ?? ['Connected data']).map((src) => (
                       <div key={src} className="flex items-center gap-2 text-xs text-slate-400">
                         <span className="w-1.5 h-1.5 rounded-full bg-green-500 shrink-0" />
                         <span>{src}</span>
@@ -250,7 +234,7 @@ export default function Analysis() {
 
                 <div className="card border-yellow-900/40 p-4 bg-yellow-950/10">
                   <p className="text-xs text-yellow-700 leading-relaxed">
-                    <strong className="text-yellow-600">Disclaimer:</strong> Risk scores are based on objective spending pattern analysis using public data. A high score indicates anomalous patterns, not proven wrongdoing. Consult official IG reports or legal counsel for determinations.
+                    <strong className="text-yellow-600">Disclaimer:</strong> Risk scores are based on pattern analysis of your connected data files. A high score indicates anomalous patterns, not proven wrongdoing. Consult legal counsel for formal determinations.
                   </p>
                 </div>
               </div>

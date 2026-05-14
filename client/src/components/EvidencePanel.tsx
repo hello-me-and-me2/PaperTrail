@@ -100,10 +100,12 @@ export default function EvidencePanel({ evidence, title = 'Evidence' }: Props) {
                       </div>
                     </div>
                   </div>
-                  <a href={ev.sourceUrl} target="_blank" rel="noopener noreferrer"
-                    className="flex items-center gap-1 text-xs text-accent hover:text-blue-300 transition-colors shrink-0 mt-0.5">
-                    <ExternalLink className="w-3 h-3" />
-                  </a>
+                  {ev.sourceUrl && (
+                    <a href={ev.sourceUrl} target="_blank" rel="noopener noreferrer"
+                      className="flex items-center gap-1 text-xs text-accent hover:text-blue-300 transition-colors shrink-0 mt-0.5">
+                      <ExternalLink className="w-3 h-3" />
+                    </a>
+                  )}
                 </div>
               </div>
             );

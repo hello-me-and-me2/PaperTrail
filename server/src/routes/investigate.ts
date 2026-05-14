@@ -1,7 +1,7 @@
 import { Router, Request, Response } from 'express';
 import { runInvestigation, InvestigationEntity } from '../services/investigator';
 import { requireAuth, optionalAuth, JwtPayload } from '../middleware/auth';
-import db, { alertQueries, scheduleQueries } from '../db';
+import db, { alertQueries, scheduleQueries, orgFileQueries, userQueries } from '../db';
 import { sendCorruptionAlertEmail } from '../services/emailService';
 import { sendPushNotification } from '../services/pushService';
 
@@ -41,12 +41,25 @@ router.post('/stream', optionalAuth, async (req: Request, res: Response) => {
     if (!res.writableEnded) res.write(`event: ${eventType}\ndata: ${JSON.stringify(data)}\n\n`);
   };
 
-  // Resolve user email once if authenticated
+  // Resolve user email + org data once if authenticated
   let userEmail: string | null = null;
+  let orgData: string | undefined;
+  let orgContext: string | undefined;
   const userId = authedUser?.userId ?? null;
   if (userId) {
     const row = db.prepare('SELECT email FROM users WHERE id = ?').get(userId) as { email: string } | undefined;
     userEmail = row?.email ?? null;
+
+    const dbUser = userQueries.findById.get(userId);
+    if (dbUser?.org_display_name) orgContext = dbUser.org_display_name;
+
+    const files = orgFileQueries.listByUser.all(userId);
+    if (files.length > 0) {
+      orgData = files
+        .map(f => f.content ? `[SOURCE FILE: ${f.original_name}]\n${f.content}` : '')
+        .filter(Boolean)
+        .join('\n\n---\n\n');
+    }
   }
 
   const appUrl = process.env.APP_URL || '';
@@ -113,7 +126,9 @@ router.post('/stream', optionalAuth, async (req: Request, res: Response) => {
           }
         }
       },
-      controller.signal
+      controller.signal,
+      orgData,
+      orgContext,
     );
   } catch {
     send('error', { message: 'Investigation failed unexpectedly.' });

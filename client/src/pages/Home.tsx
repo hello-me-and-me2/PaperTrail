@@ -39,7 +39,7 @@ const FEATURES = [
   {
     icon: Shield,
     title: 'Multi-Source Verification',
-    desc: 'Every finding is cross-referenced across internal records, USASpending.gov, Federal Register, and live news — confidence scores show agreement across sources.',
+    desc: 'Every finding is cross-referenced across your connected files and data sources — confidence scores reflect pattern strength and data corroboration.',
     color: 'text-green-600', bg: 'bg-green-50', border: 'border-green-100',
   },
   {

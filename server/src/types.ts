@@ -23,7 +23,7 @@ export interface Evidence {
   description: string;
   amount?: number;
   date?: string;
-  sourceUrl: string;
+  sourceUrl: string | null;
   sourceLabel: string;
   severity: 'low' | 'medium' | 'high' | 'critical';
   confidence?: number;   // 0-100 — how certain is this finding

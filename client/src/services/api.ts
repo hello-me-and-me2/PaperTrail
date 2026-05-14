@@ -1,20 +1,12 @@
 import axios from 'axios';
-import { CorruptionAnalysis, OrgSuggestion, OrgSurvey, OrgDataHit, CorruptionAlert, OrgConnection, SearchResponse, ScheduledInvestigation } from '../types';
+import { CorruptionAnalysis, OrgSuggestion, OrgSurvey, OrgDataHit, CorruptionAlert, OrgConnection, ScheduledInvestigation } from '../types';
 
-const client = axios.create({ baseURL: '/api', timeout: 45000 });
-
-// Authenticated client — reads token from localStorage automatically
 const authClient = axios.create({ baseURL: '/api', timeout: 30000 });
 authClient.interceptors.request.use((config) => {
   const token = localStorage.getItem('pt_token');
   if (token) config.headers.Authorization = `Bearer ${token}`;
   return config;
 });
-
-export async function search(query: string): Promise<SearchResponse> {
-  const { data } = await client.get('/search', { params: { q: query } });
-  return data;
-}
 
 export async function analyzeRecipient(name: string, org?: string): Promise<CorruptionAnalysis> {
   const { data } = await authClient.get(`/analysis/recipient/${encodeURIComponent(name)}`, {
@@ -101,7 +93,7 @@ export async function deleteConnection(id: number): Promise<void> {
 
 // Push notifications
 export async function getVapidPublicKey(): Promise<string> {
-  const { data } = await client.get('/push/vapid-key');
+  const { data } = await authClient.get('/push/vapid-key');
   return data.publicKey;
 }
 export async function savePushSubscription(sub: PushSubscriptionJSON): Promise<void> {

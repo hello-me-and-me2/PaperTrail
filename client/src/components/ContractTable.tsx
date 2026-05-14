@@ -1,4 +1,3 @@
-import { ExternalLink } from 'lucide-react';
 import { Award } from '../types';
 
 interface ContractTableProps {
@@ -30,7 +29,7 @@ export default function ContractTable({ contracts, title = 'Top Contracts' }: Co
     <div className="card overflow-hidden">
       <div className="px-5 py-4 border-b border-dark-500">
         <h3 className="font-semibold text-white">{title}</h3>
-        <p className="text-xs text-slate-500 mt-0.5">Sorted by award amount — source: USASpending.gov</p>
+        <p className="text-xs text-slate-500 mt-0.5">Sorted by award amount — from connected data</p>
       </div>
       <div className="overflow-x-auto">
         <table className="w-full text-sm">
@@ -66,17 +65,7 @@ export default function ContractTable({ contracts, title = 'Top Contracts' }: Co
                 <td className="px-4 py-3 text-slate-500 text-xs whitespace-nowrap">
                   {c['Start Date']}
                 </td>
-                <td className="px-4 py-3">
-                  <a
-                    href={`https://www.usaspending.gov/award/${c['Award ID']}`}
-                    target="_blank"
-                    rel="noopener noreferrer"
-                    className="text-accent hover:text-blue-300 transition-colors"
-                    title="View on USASpending.gov"
-                  >
-                    <ExternalLink className="w-3.5 h-3.5" />
-                  </a>
-                </td>
+                <td className="px-4 py-3"></td>
               </tr>
             ))}
           </tbody>
