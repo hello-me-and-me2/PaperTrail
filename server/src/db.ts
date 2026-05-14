@@ -247,4 +247,57 @@ export const orgFileQueries = {
   deleteById: db.prepare<[number, number], void>('DELETE FROM org_files WHERE id = ? AND user_id = ?'),
 };
 
+// ── Scheduled Investigations ──────────────────────────────────────────────
+db.exec(`
+  CREATE TABLE IF NOT EXISTS scheduled_investigations (
+    id INTEGER PRIMARY KEY AUTOINCREMENT,
+    user_id INTEGER NOT NULL,
+    entities TEXT NOT NULL,
+    label TEXT,
+    duration_ms INTEGER NOT NULL DEFAULT 0,
+    started_at TEXT NOT NULL DEFAULT (datetime('now')),
+    ends_at TEXT NOT NULL,
+    last_run_at TEXT,
+    next_run_at TEXT NOT NULL,
+    status TEXT NOT NULL DEFAULT 'active'
+  );
+`);
+
+export interface ScheduledInvestigation {
+  id: number;
+  user_id: number;
+  entities: string;
+  label: string | null;
+  duration_ms: number;
+  started_at: string;
+  ends_at: string;
+  last_run_at: string | null;
+  next_run_at: string;
+  status: string;
+}
+
+export const scheduleQueries = {
+  create: db.prepare<[number, string, string | null, number, string, string], { lastInsertRowid: number }>(
+    'INSERT INTO scheduled_investigations (user_id, entities, label, duration_ms, ends_at, next_run_at) VALUES (?, ?, ?, ?, ?, ?)'
+  ),
+  listByUser: db.prepare<[number], ScheduledInvestigation>(
+    "SELECT * FROM scheduled_investigations WHERE user_id = ? ORDER BY started_at DESC"
+  ),
+  listActive: db.prepare<[number], ScheduledInvestigation>(
+    "SELECT * FROM scheduled_investigations WHERE user_id = ? AND status = 'active' ORDER BY started_at DESC"
+  ),
+  stopById: db.prepare<[number, number], void>(
+    "UPDATE scheduled_investigations SET status = 'stopped' WHERE id = ? AND user_id = ?"
+  ),
+  listDue: db.prepare<[], ScheduledInvestigation>(
+    "SELECT * FROM scheduled_investigations WHERE status = 'active' AND next_run_at <= datetime('now')"
+  ),
+  updateAfterRun: db.prepare<[string, number], void>(
+    "UPDATE scheduled_investigations SET last_run_at = datetime('now'), next_run_at = ? WHERE id = ?"
+  ),
+  markComplete: db.prepare<[number], void>(
+    "UPDATE scheduled_investigations SET status = 'completed' WHERE id = ?"
+  ),
+};
+
 export default db;

@@ -1,5 +1,5 @@
 import axios from 'axios';
-import { CorruptionAnalysis, OrgSuggestion, OrgSurvey, OrgDataHit, CorruptionAlert, OrgConnection, SearchResponse } from '../types';
+import { CorruptionAnalysis, OrgSuggestion, OrgSurvey, OrgDataHit, CorruptionAlert, OrgConnection, SearchResponse, ScheduledInvestigation } from '../types';
 
 const client = axios.create({ baseURL: '/api', timeout: 45000 });
 
@@ -112,4 +112,21 @@ export async function savePushSubscription(sub: PushSubscriptionJSON): Promise<v
 }
 export async function removePushSubscription(endpoint: string): Promise<void> {
   await authClient.delete('/push/subscribe', { data: { endpoint } });
+}
+
+// Investigation schedules
+export async function scheduleInvestigation(
+  entities: { name: string; type: string }[],
+  durationMs: number,
+  label?: string,
+): Promise<{ id: number; endsAt: string }> {
+  const { data } = await authClient.post('/investigate/schedule', { entities, durationMs, label });
+  return data;
+}
+export async function getInvestigationSchedules(): Promise<ScheduledInvestigation[]> {
+  const { data } = await authClient.get('/investigate/schedule');
+  return data;
+}
+export async function stopInvestigationSchedule(id: number): Promise<void> {
+  await authClient.delete(`/investigate/schedule/${id}`);
 }

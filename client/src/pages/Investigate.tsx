@@ -1,8 +1,27 @@
-import { useState } from 'react';
-import { Plus, X, Play, Square, RotateCcw, Building2, Landmark, User, AlertTriangle, TrendingUp, DollarSign, Target } from 'lucide-react';
+import { useState, useRef, useEffect, useCallback } from 'react';
+import {
+  Plus, X, Play, Square, RotateCcw, Building2, Landmark, User, AlertTriangle,
+  TrendingUp, DollarSign, Target, Search, Loader2, Clock, CalendarClock,
+  BellRing, FolderX, Database,
+} from 'lucide-react';
 import { useInvestigation, InvestigationEntity, EntityType } from '../hooks/useInvestigation';
 import EntityAnalysisCard from '../components/EntityAnalysisCard';
 import LiveFeed from '../components/LiveFeed';
+import { searchOrgData } from '../services/api';
+import { OrgDataHit } from '../types';
+
+// ── Duration options ──────────────────────────────────────────────────────
+const DURATIONS: { label: string; ms: number }[] = [
+  { label: 'One-time',  ms: 0 },
+  { label: '1 hr',      ms: 60 * 60 * 1000 },
+  { label: '6 hrs',     ms: 6 * 60 * 60 * 1000 },
+  { label: '12 hrs',    ms: 12 * 60 * 60 * 1000 },
+  { label: '1 day',     ms: 24 * 60 * 60 * 1000 },
+  { label: '3 days',    ms: 3 * 24 * 60 * 60 * 1000 },
+  { label: '1 week',    ms: 7 * 24 * 60 * 60 * 1000 },
+  { label: '2 weeks',   ms: 14 * 24 * 60 * 60 * 1000 },
+  { label: '1 month',   ms: 30 * 24 * 60 * 60 * 1000 },
+];
 
 const TYPE_OPTIONS: { value: EntityType; label: string; icon: typeof Building2; color: string; bg: string }[] = [
   { value: 'recipient', label: 'Company',  icon: Building2, color: 'text-blue-400',   bg: 'bg-blue-950/50 border-blue-900/50' },
@@ -16,20 +35,128 @@ function formatMoney(n: number) {
   return `$${(n / 1_000).toFixed(0)}K`;
 }
 
+function formatCountdown(endsAt: string): string {
+  const diff = new Date(endsAt).getTime() - Date.now();
+  if (diff <= 0) return 'ended';
+  const d = Math.floor(diff / 86400000);
+  const h = Math.floor((diff % 86400000) / 3600000);
+  const m = Math.floor((diff % 3600000) / 60000);
+  if (d > 0) return `${d}d ${h}h remaining`;
+  if (h > 0) return `${h}h ${m}m remaining`;
+  return `${m}m remaining`;
+}
+
+// ── Org-data entity search input ──────────────────────────────────────────
+function EntitySearchInput({
+  value,
+  onChange,
+  type,
+  placeholder,
+}: {
+  value: string;
+  onChange: (v: string) => void;
+  type: EntityType;
+  placeholder: string;
+}) {
+  const [suggestions, setSuggestions] = useState<OrgDataHit[]>([]);
+  const [loading, setLoading] = useState(false);
+  const [open, setOpen] = useState(false);
+  const [noData, setNoData] = useState(false);
+  const debounceRef = useRef<ReturnType<typeof setTimeout> | null>(null);
+  const wrapperRef = useRef<HTMLDivElement>(null);
+
+  useEffect(() => {
+    function close(e: MouseEvent) {
+      if (wrapperRef.current && !wrapperRef.current.contains(e.target as Node)) setOpen(false);
+    }
+    document.addEventListener('mousedown', close);
+    return () => document.removeEventListener('mousedown', close);
+  }, []);
+
+  const fetch = useCallback((q: string) => {
+    if (debounceRef.current) clearTimeout(debounceRef.current);
+    if (q.length < 2) { setSuggestions([]); setNoData(false); setOpen(false); return; }
+    debounceRef.current = setTimeout(async () => {
+      setLoading(true);
+      try {
+        const hits = await searchOrgData(q);
+        setSuggestions(hits.slice(0, 6));
+        setNoData(hits.length === 0);
+        setOpen(true);
+      } catch {
+        setSuggestions([]);
+      } finally {
+        setLoading(false);
+      }
+    }, 300);
+  }, []);
+
+  const typeColor = type === 'agency' ? 'text-purple-400' : type === 'person' ? 'text-yellow-400' : 'text-blue-400';
+
+  return (
+    <div className="relative" ref={wrapperRef}>
+      <div className="relative flex items-center">
+        {loading
+          ? <Loader2 className="absolute left-3 w-3.5 h-3.5 text-accent animate-spin pointer-events-none" />
+          : <Search className="absolute left-3 w-3.5 h-3.5 text-slate-600 pointer-events-none" />
+        }
+        <input
+          type="text"
+          value={value}
+          onChange={(e) => { onChange(e.target.value); fetch(e.target.value); }}
+          onFocus={() => (suggestions.length > 0 || noData) && setOpen(true)}
+          placeholder={placeholder}
+          className="w-full bg-dark-600 border border-dark-500 focus:border-accent rounded-lg pl-8 pr-3 py-2 text-sm text-white placeholder-slate-600 outline-none transition-colors"
+        />
+      </div>
+
+      {open && (
+        <div className="absolute left-0 right-0 top-full mt-1 bg-dark-600 border border-dark-500 rounded-xl shadow-xl z-50 overflow-hidden max-h-48 overflow-y-auto">
+          {noData ? (
+            <div className="px-3 py-3 text-center">
+              <FolderX className="w-5 h-5 text-slate-600 mx-auto mb-1" />
+              <p className="text-xs text-slate-400 font-medium">No data matches "{value}"</p>
+              <p className="text-[11px] text-slate-600 mt-0.5">Upload connected files to enable suggestions</p>
+            </div>
+          ) : suggestions.map((s, i) => (
+            <button
+              key={i}
+              type="button"
+              onMouseDown={() => { onChange(s.name); setSuggestions([]); setOpen(false); }}
+              className="w-full flex items-center gap-2 px-3 py-2 text-left hover:bg-dark-500 transition-colors border-b border-dark-700 last:border-0"
+            >
+              <Database className={`w-3 h-3 shrink-0 ${typeColor}`} />
+              <span className="text-xs text-white truncate flex-1">{s.name}</span>
+              <span className="text-[10px] text-slate-600 truncate max-w-[80px]">{s.source}</span>
+            </button>
+          ))}
+        </div>
+      )}
+    </div>
+  );
+}
+
+// ── Main page ─────────────────────────────────────────────────────────────
 export default function Investigate() {
   const [inputs, setInputs] = useState<InvestigationEntity[]>([{ name: '', type: 'recipient' }]);
   const [inputError, setInputError] = useState('');
-  const { state, start, stop, reset } = useInvestigation();
+  const [duration, setDuration] = useState(0);
+  const [tick, setTick] = useState(0);
+  const { state, start, stop, cancelSchedule, reset } = useInvestigation();
+
+  // Tick every minute to refresh the countdown
+  useEffect(() => {
+    const id = setInterval(() => setTick(t => t + 1), 60_000);
+    return () => clearInterval(id);
+  }, []);
 
   function addInput() {
     if (inputs.length >= 5) return;
     setInputs((prev) => [...prev, { name: '', type: 'recipient' }]);
   }
-
   function removeInput(i: number) {
     setInputs((prev) => prev.filter((_, idx) => idx !== i));
   }
-
   function updateInput(i: number, patch: Partial<InvestigationEntity>) {
     setInputs((prev) => prev.map((inp, idx) => (idx === i ? { ...inp, ...patch } : inp)));
   }
@@ -38,30 +165,30 @@ export default function Investigate() {
     const valid = inputs.filter((e) => e.name.trim().length > 1);
     if (valid.length === 0) { setInputError('Add at least one entity to investigate.'); return; }
     setInputError('');
-    start(valid);
+    start(valid, duration);
   }
 
   const isRunning = state.status === 'running';
   const isIdle = state.status === 'idle';
-
   const completed = state.entities.filter((e) => e.status === 'complete');
   const primary = state.entities.filter((e) => e.depth === 0);
   const discovered = state.entities.filter((e) => e.depth > 0);
+  const isScheduled = !!state.scheduleEndsAt;
 
   return (
     <div className="flex h-[calc(100vh-52px)] overflow-hidden bg-dark-900">
-      {/* ── Left sidebar: builder + summary ── */}
+      {/* ── Left sidebar ── */}
       <aside className="w-72 shrink-0 border-r border-dark-500 flex flex-col bg-dark-800">
         <div className="px-4 py-4 border-b border-dark-500">
           <h2 className="text-sm font-bold text-white mb-0.5">Investigation Workspace</h2>
-          <p className="text-xs text-slate-500">Add entities — the AI will analyze them in parallel and auto-discover related parties.</p>
+          <p className="text-xs text-slate-500">Search your connected data to find entities, then the AI investigates them in depth.</p>
         </div>
 
-        {/* Entity inputs */}
         <div className="flex-1 overflow-y-auto px-4 py-4 space-y-3">
           {isIdle && (
             <>
               <p className="text-xs text-slate-500 uppercase tracking-widest font-semibold">Targets</p>
+
               {inputs.map((inp, i) => (
                 <div key={i} className="space-y-1.5 bg-dark-700 border border-dark-500 rounded-xl p-3">
                   <div className="flex items-center gap-1.5 mb-2">
@@ -71,6 +198,7 @@ export default function Investigate() {
                         return (
                           <button
                             key={opt.value}
+                            type="button"
                             onClick={() => updateInput(i, { type: opt.value })}
                             className={`px-2 py-1.5 text-xs font-medium transition-colors flex items-center gap-1 ${
                               inp.type === opt.value
@@ -90,17 +218,15 @@ export default function Investigate() {
                       </button>
                     )}
                   </div>
-                  <input
-                    type="text"
+                  <EntitySearchInput
                     value={inp.name}
-                    onChange={(e) => updateInput(i, { name: e.target.value })}
-                    onKeyDown={(e) => { if (e.key === 'Enter' && i === inputs.length - 1) addInput(); }}
+                    onChange={(v) => updateInput(i, { name: v })}
+                    type={inp.type}
                     placeholder={
-                      inp.type === 'recipient' ? 'e.g. Boeing' :
-                      inp.type === 'agency'    ? 'e.g. Dept of Defense' :
-                      'e.g. Eric Schmidt'
+                      inp.type === 'recipient' ? 'Search vendors, companies…' :
+                      inp.type === 'agency'    ? 'Search agencies…' :
+                                                 'Search employees, people…'
                     }
-                    className="w-full bg-dark-600 border border-dark-500 focus:border-accent rounded-lg px-3 py-2 text-sm text-white placeholder-slate-600 outline-none transition-colors"
                   />
                 </div>
               ))}
@@ -116,16 +242,47 @@ export default function Investigate() {
 
               {inputError && <p className="text-xs text-red-400">{inputError}</p>}
 
+              {/* Duration picker */}
+              <div className="bg-dark-700 border border-dark-500 rounded-xl p-3 space-y-2">
+                <div className="flex items-center gap-1.5">
+                  <CalendarClock className="w-3.5 h-3.5 text-accent" />
+                  <p className="text-xs font-semibold text-slate-300">Monitor for</p>
+                </div>
+                <div className="grid grid-cols-3 gap-1">
+                  {DURATIONS.map((d) => (
+                    <button
+                      key={d.ms}
+                      type="button"
+                      onClick={() => setDuration(d.ms)}
+                      className={`py-1.5 px-1 text-[11px] font-medium rounded-lg transition-colors text-center ${
+                        duration === d.ms
+                          ? 'bg-accent text-white'
+                          : 'bg-dark-600 text-slate-400 hover:text-white hover:bg-dark-500'
+                      }`}
+                    >
+                      {d.label}
+                    </button>
+                  ))}
+                </div>
+                {duration > 0 && (
+                  <p className="text-[10px] text-slate-500 flex items-center gap-1 mt-1">
+                    <BellRing className="w-3 h-3" />
+                    Email + push alerts when corruption is found. Re-runs every hour until {new Date(Date.now() + duration).toLocaleDateString()}.
+                  </p>
+                )}
+              </div>
+
               <button
                 onClick={handleStart}
                 className="w-full flex items-center justify-center gap-2 bg-accent hover:bg-blue-600 text-white font-semibold py-2.5 rounded-xl transition-colors text-sm"
               >
-                <Play className="w-4 h-4" /> Start Investigation
+                <Play className="w-4 h-4" />
+                {duration > 0 ? 'Start & Schedule' : 'Start Investigation'}
               </button>
 
               <div className="bg-dark-600 border border-dark-500 rounded-xl p-3 text-xs text-slate-500 leading-relaxed">
                 <p className="font-semibold text-slate-400 mb-1">How it works</p>
-                <p>The AI runs all targets simultaneously, then automatically discovers and investigates related entities — agencies that issued no-bid contracts, contractors receiving concentrated awards, and more.</p>
+                <p>Search your connected data to pick entities. The AI then investigates them using public records and auto-discovers related parties. Set a duration to keep monitoring in the background.</p>
               </div>
             </>
           )}
@@ -133,6 +290,24 @@ export default function Investigate() {
           {!isIdle && (
             <>
               <p className="text-xs text-slate-500 uppercase tracking-widest font-semibold">Progress</p>
+
+              {/* Schedule countdown */}
+              {isScheduled && state.scheduleEndsAt && (
+                <div className="bg-accent/10 border border-accent/30 rounded-xl p-3">
+                  <div className="flex items-center gap-1.5 mb-1">
+                    <Clock className="w-3.5 h-3.5 text-accent" />
+                    <span className="text-xs font-semibold text-accent">Scheduled monitoring active</span>
+                  </div>
+                  <p className="text-xs text-slate-400">{formatCountdown(state.scheduleEndsAt)}</p>
+                  <p className="text-[10px] text-slate-500 mt-1">Re-runs hourly · alerts sent on findings</p>
+                  <button
+                    onClick={cancelSchedule}
+                    className="mt-2 text-[10px] text-red-400 hover:text-red-300 transition-colors"
+                  >
+                    Cancel schedule
+                  </button>
+                </div>
+              )}
 
               <div className="space-y-1.5">
                 {state.entities.map((e) => {
@@ -162,10 +337,10 @@ export default function Investigate() {
               {state.summary && (
                 <div className="grid grid-cols-2 gap-2 mt-2">
                   {[
-                    { icon: Target,       label: 'Critical', value: state.summary.criticalCount, color: 'text-red-400' },
-                    { icon: AlertTriangle, label: 'High',    value: state.summary.highCount,     color: 'text-orange-400' },
-                    { icon: TrendingUp,   label: 'Analyzed', value: state.summary.totalAnalyzed, color: 'text-accent' },
-                    { icon: DollarSign,   label: 'Total',    value: formatMoney(state.summary.totalAmount), color: 'text-white' },
+                    { icon: Target,        label: 'Critical', value: state.summary.criticalCount, color: 'text-red-400' },
+                    { icon: AlertTriangle, label: 'High',     value: state.summary.highCount,     color: 'text-orange-400' },
+                    { icon: TrendingUp,    label: 'Analyzed', value: state.summary.totalAnalyzed, color: 'text-accent' },
+                    { icon: DollarSign,    label: 'Total',    value: formatMoney(state.summary.totalAmount), color: 'text-white' },
                   ].map((s) => {
                     const Icon = s.icon;
                     return (
@@ -196,7 +371,6 @@ export default function Investigate() {
 
       {/* ── Main workspace ── */}
       <main className="flex-1 flex flex-col overflow-hidden">
-        {/* Column headers */}
         <div className="border-b border-dark-500 px-5 py-3 flex items-center gap-4 bg-dark-800/50">
           <span className="text-xs font-semibold text-slate-400 uppercase tracking-widest">
             {state.status === 'idle' ? 'Workspace — ready' :
@@ -208,10 +382,14 @@ export default function Investigate() {
               Highest risk: {state.summary.topRisk[0].name} ({state.summary.topRisk[0].score}/100)
             </span>
           )}
+          {isScheduled && (
+            <span className="text-xs text-accent border border-accent/30 bg-accent/10 rounded px-2 py-0.5 flex items-center gap-1">
+              <Clock className="w-3 h-3" /> {tick >= 0 && state.scheduleEndsAt ? formatCountdown(state.scheduleEndsAt) : ''}
+            </span>
+          )}
         </div>
 
         <div className="flex-1 flex overflow-hidden">
-          {/* Cards area */}
           <div className="flex-1 overflow-y-auto p-5">
             {state.status === 'idle' && (
               <div className="h-full flex flex-col items-center justify-center text-center max-w-sm mx-auto gap-4">
@@ -219,8 +397,8 @@ export default function Investigate() {
                   <Target className="w-8 h-8 text-slate-600" />
                 </div>
                 <div>
-                  <p className="text-white font-semibold mb-1">Add targets to begin</p>
-                  <p className="text-sm text-slate-500">Enter companies, agencies, or people in the left panel. The AI will analyze all of them in parallel and follow the money trail automatically.</p>
+                  <p className="text-white font-semibold mb-1">Search your data to begin</p>
+                  <p className="text-sm text-slate-500">Type a vendor, employee, or entity from your connected files in the left panel. The AI will investigate using public records and follow the money trail automatically.</p>
                 </div>
               </div>
             )}
@@ -237,7 +415,6 @@ export default function Investigate() {
                     </div>
                   </div>
                 )}
-
                 {discovered.length > 0 && (
                   <div>
                     <div className="flex items-center gap-2 mb-3">
@@ -255,7 +432,6 @@ export default function Investigate() {
             )}
           </div>
 
-          {/* Live feed sidebar */}
           <aside className="w-64 shrink-0 border-l border-dark-500 bg-dark-800 overflow-hidden flex flex-col">
             <LiveFeed items={state.feed} isRunning={isRunning} />
           </aside>

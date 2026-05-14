@@ -1,5 +1,6 @@
 import { useState, useRef, useCallback } from 'react';
 import { CorruptionAnalysis, SpendingOverTime } from '../types';
+import { scheduleInvestigation, stopInvestigationSchedule } from '../services/api';
 
 export type EntityType = 'recipient' | 'agency' | 'person';
 
@@ -43,6 +44,8 @@ export interface InvestigationState {
   entities: EntityResult[];
   feed: FeedItem[];
   summary: InvestigationSummary | null;
+  scheduleId: number | null;
+  scheduleEndsAt: string | null;
 }
 
 function feedId() {
@@ -55,6 +58,8 @@ export function useInvestigation() {
     entities: [],
     feed: [],
     summary: null,
+    scheduleId: null,
+    scheduleEndsAt: null,
   });
 
   const abortRef = useRef<AbortController | null>(null);
@@ -66,7 +71,7 @@ export function useInvestigation() {
     }));
   }, []);
 
-  const start = useCallback(async (entities: InvestigationEntity[]) => {
+  const start = useCallback(async (entities: InvestigationEntity[], durationMs = 0) => {
     if (abortRef.current) abortRef.current.abort();
     const controller = new AbortController();
     abortRef.current = controller;
@@ -76,12 +81,27 @@ export function useInvestigation() {
       entities: entities.map((e) => ({ ...e, status: 'queued', depth: 0 })),
       feed: [],
       summary: null,
+      scheduleId: null,
+      scheduleEndsAt: null,
     });
 
+    // Save schedule server-side if duration is set
+    if (durationMs > 0) {
+      scheduleInvestigation(entities, durationMs)
+        .then(({ id, endsAt }) => {
+          setState((s) => ({ ...s, scheduleId: id, scheduleEndsAt: endsAt }));
+        })
+        .catch(() => {});
+    }
+
     try {
+      const token = localStorage.getItem('pt_token');
       const response = await fetch('/api/investigate/stream', {
         method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
+        headers: {
+          'Content-Type': 'application/json',
+          ...(token ? { Authorization: `Bearer ${token}` } : {}),
+        },
         body: JSON.stringify({ entities }),
         signal: controller.signal,
       });
@@ -219,10 +239,17 @@ export function useInvestigation() {
     setState((s) => ({ ...s, status: 'idle' }));
   }, []);
 
-  const reset = useCallback(() => {
-    abortRef.current?.abort();
-    setState({ status: 'idle', entities: [], feed: [], summary: null });
+  const cancelSchedule = useCallback(() => {
+    setState((s) => {
+      if (s.scheduleId) stopInvestigationSchedule(s.scheduleId).catch(() => {});
+      return { ...s, scheduleId: null, scheduleEndsAt: null };
+    });
   }, []);
 
-  return { state, start, stop, reset };
+  const reset = useCallback(() => {
+    abortRef.current?.abort();
+    setState({ status: 'idle', entities: [], feed: [], summary: null, scheduleId: null, scheduleEndsAt: null });
+  }, []);
+
+  return { state, start, stop, cancelSchedule, reset };
 }

@@ -1,5 +1,7 @@
-import { userQueries_extra, orgFileQueries, alertQueries } from '../db';
+import { userQueries_extra, orgFileQueries, alertQueries, scheduleQueries, User } from '../db';
+import db from '../db';
 import { aiAnalyzeEntity } from './aiAnalyzer';
+import { InvestigationEntity } from './investigator';
 import { sendCorruptionAlertEmail } from './emailService';
 import { sendPushNotification } from './pushService';
 
@@ -135,6 +137,80 @@ async function monitorUser(userId: number, email: string, orgName: string | null
   }
 }
 
+async function runScheduledInvestigations() {
+  const due = scheduleQueries.listDue.all();
+  if (due.length === 0) return;
+  console.log(`[monitor] Running ${due.length} scheduled investigation(s)`);
+
+  for (const inv of due) {
+    const user = db.prepare('SELECT * FROM users WHERE id = ?').get(inv.user_id) as User | undefined;
+    if (!user) { scheduleQueries.markComplete.run(inv.id); continue; }
+
+    const entities: InvestigationEntity[] = JSON.parse(inv.entities);
+    const highRisk: { name: string; level: string; score: number }[] = [];
+
+    for (const entity of entities.slice(0, MAX_ENTITIES_PER_RUN)) {
+      try {
+        const result = await aiAnalyzeEntity(entity.name, entity.type);
+        if (result.overallScore < ALERT_THRESHOLD) continue;
+
+        const recent = alertQueries.findRecentByEntity.get(user.id, entity.name);
+        if (recent) continue;
+
+        const analysisPath = `/analysis/${entity.type}/${encodeURIComponent(entity.name)}`;
+        const appUrl = process.env.APP_URL || '';
+        const ins = alertQueries.create.run(
+          user.id,
+          `${result.riskLevel} Risk Detected: ${entity.name}`,
+          result.summary,
+          result.riskLevel,
+          entity.name,
+          entity.type,
+          result.overallScore,
+          analysisPath,
+        );
+        const alertId = ins.lastInsertRowid as number;
+        highRisk.push({ name: entity.name, level: result.riskLevel, score: result.overallScore });
+
+        const emailOk = await sendCorruptionAlertEmail(user.email, {
+          entityName: entity.name,
+          severity: result.riskLevel,
+          description: result.summary,
+          analysisUrl: `${appUrl}${analysisPath}`,
+        });
+        if (emailOk) alertQueries.markEmailSent.run(alertId);
+
+        const pushed = await sendPushNotification(user.id, {
+          title: `⚠️ ${result.riskLevel}: ${entity.name}`,
+          body: result.summary.slice(0, 120),
+          url: analysisPath,
+        });
+        if (pushed > 0) alertQueries.markPushSent.run(alertId);
+      } catch (e) {
+        console.error(`[monitor] Scheduled investigation error for ${entity.name}:`, e);
+      }
+    }
+
+    // Check if schedule has ended
+    const isExpired = new Date(inv.ends_at) <= new Date();
+    if (isExpired) {
+      scheduleQueries.markComplete.run(inv.id);
+      // Final summary notification
+      if (highRisk.length > 0) {
+        sendPushNotification(user.id, {
+          title: '🔍 Scheduled Investigation Complete',
+          body: `Monitoring ended. ${highRisk.length} high-risk ${highRisk.length === 1 ? 'entity' : 'entities'} detected over the monitoring period.`,
+          url: '/alerts',
+        }).catch(() => {});
+      }
+    } else {
+      // Schedule next run in 1 hour
+      const nextRun = new Date(Date.now() + 60 * 60 * 1000).toISOString();
+      scheduleQueries.updateAfterRun.run(nextRun, inv.id);
+    }
+  }
+}
+
 export function startMonitor() {
   const intervalMs = parseInt(process.env.MONITOR_INTERVAL_MS || String(60 * 60 * 1000)); // 1 hour
 
@@ -144,6 +220,7 @@ export function startMonitor() {
     for (const user of users) {
       await monitorUser(user.id, user.email, user.org_display_name ?? user.org_name).catch(() => {});
     }
+    await runScheduledInvestigations().catch(() => {});
   }
 
   // Run first cycle 5 minutes after startup to let the server warm up

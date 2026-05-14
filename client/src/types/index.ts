@@ -166,3 +166,16 @@ export interface OrgConnection {
   connectedAt: string;
   webhookUrl?: string;
 }
+
+export interface ScheduledInvestigation {
+  id: number;
+  user_id: number;
+  entities: { name: string; type: string }[];
+  label: string | null;
+  duration_ms: number;
+  started_at: string;
+  ends_at: string;
+  last_run_at: string | null;
+  next_run_at: string;
+  status: string;
+}
