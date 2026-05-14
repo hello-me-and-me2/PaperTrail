@@ -2,7 +2,7 @@ import { useState, useRef, useEffect, useCallback } from 'react';
 import {
   Plus, X, Play, Square, RotateCcw, Building2, Landmark, User, AlertTriangle,
   TrendingUp, DollarSign, Target, Search, Loader2, Clock, CalendarClock,
-  BellRing, FolderX, Database,
+  BellRing, FolderX, Database, Users, GitBranch, Zap, ShoppingBag,
 } from 'lucide-react';
 import { useInvestigation, InvestigationEntity, EntityType } from '../hooks/useInvestigation';
 import EntityAnalysisCard from '../components/EntityAnalysisCard';
@@ -23,11 +23,18 @@ const DURATIONS: { label: string; ms: number }[] = [
   { label: '1 month',   ms: 30 * 24 * 60 * 60 * 1000 },
 ];
 
-const TYPE_OPTIONS: { value: EntityType; label: string; icon: typeof Building2; color: string; bg: string }[] = [
-  { value: 'recipient', label: 'Company',  icon: Building2, color: 'text-blue-400',   bg: 'bg-blue-950/50 border-blue-900/50' },
-  { value: 'agency',    label: 'Agency',   icon: Landmark,  color: 'text-purple-400', bg: 'bg-purple-950/50 border-purple-900/50' },
-  { value: 'person',    label: 'Person',   icon: User,      color: 'text-yellow-400', bg: 'bg-yellow-950/50 border-yellow-900/50' },
+// Same modes as the search bar — map to the API entity type
+type OrgMode = 'people' | 'branches' | 'events' | 'vendors';
+const MODE_OPTIONS: { value: OrgMode; label: string; icon: typeof Search; hint: string; entityType: EntityType }[] = [
+  { value: 'people',   label: 'People',   icon: Users,       hint: 'Employees & executives',      entityType: 'person'    },
+  { value: 'branches', label: 'Branches', icon: GitBranch,   hint: 'Divisions & subsidiaries',    entityType: 'recipient' },
+  { value: 'events',   label: 'Events',   icon: Zap,         hint: 'Incidents & occurrences',     entityType: 'recipient' },
+  { value: 'vendors',  label: 'Vendors',  icon: ShoppingBag, hint: 'Suppliers & contractors',     entityType: 'recipient' },
 ];
+
+function modeToEntityType(mode: OrgMode): EntityType {
+  return MODE_OPTIONS.find(o => o.value === mode)!.entityType;
+}
 
 function formatMoney(n: number) {
   if (n >= 1_000_000_000) return `$${(n / 1_000_000_000).toFixed(2)}B`;
@@ -138,13 +145,12 @@ function EntitySearchInput({
 
 // ── Main page ─────────────────────────────────────────────────────────────
 export default function Investigate() {
-  const [inputs, setInputs] = useState<InvestigationEntity[]>([{ name: '', type: 'recipient' }]);
+  const [inputs, setInputs] = useState<{ name: string; mode: OrgMode }[]>([{ name: '', mode: 'vendors' }]);
   const [inputError, setInputError] = useState('');
   const [duration, setDuration] = useState(0);
   const [tick, setTick] = useState(0);
   const { state, start, stop, cancelSchedule, reset } = useInvestigation();
 
-  // Tick every minute to refresh the countdown
   useEffect(() => {
     const id = setInterval(() => setTick(t => t + 1), 60_000);
     return () => clearInterval(id);
@@ -152,17 +158,19 @@ export default function Investigate() {
 
   function addInput() {
     if (inputs.length >= 5) return;
-    setInputs((prev) => [...prev, { name: '', type: 'recipient' }]);
+    setInputs((prev) => [...prev, { name: '', mode: 'vendors' }]);
   }
   function removeInput(i: number) {
     setInputs((prev) => prev.filter((_, idx) => idx !== i));
   }
-  function updateInput(i: number, patch: Partial<InvestigationEntity>) {
+  function updateInput(i: number, patch: Partial<{ name: string; mode: OrgMode }>) {
     setInputs((prev) => prev.map((inp, idx) => (idx === i ? { ...inp, ...patch } : inp)));
   }
 
   function handleStart() {
-    const valid = inputs.filter((e) => e.name.trim().length > 1);
+    const valid: InvestigationEntity[] = inputs
+      .filter(e => e.name.trim().length > 1)
+      .map(e => ({ name: e.name.trim(), type: modeToEntityType(e.mode) }));
     if (valid.length === 0) { setInputError('Add at least one entity to investigate.'); return; }
     setInputError('');
     start(valid, duration);
@@ -191,29 +199,29 @@ export default function Investigate() {
 
               {inputs.map((inp, i) => (
                 <div key={i} className="space-y-1.5 bg-dark-700 border border-dark-500 rounded-xl p-3">
-                  <div className="flex items-center gap-1.5 mb-2">
-                    <div className="flex rounded-lg overflow-hidden border border-dark-500">
-                      {TYPE_OPTIONS.map((opt) => {
+                  <div className="flex items-center gap-1 mb-2">
+                    <div className="flex rounded-lg overflow-hidden border border-dark-500 flex-1">
+                      {MODE_OPTIONS.map((opt) => {
                         const Icon = opt.icon;
+                        const active = inp.mode === opt.value;
                         return (
                           <button
                             key={opt.value}
                             type="button"
-                            onClick={() => updateInput(i, { type: opt.value })}
-                            className={`px-2 py-1.5 text-xs font-medium transition-colors flex items-center gap-1 ${
-                              inp.type === opt.value
-                                ? `${opt.bg} ${opt.color} border`
-                                : 'text-slate-500 hover:text-slate-300'
+                            title={opt.hint}
+                            onClick={() => updateInput(i, { mode: opt.value })}
+                            className={`flex-1 flex items-center justify-center gap-1 px-1.5 py-1.5 text-[11px] font-medium transition-colors ${
+                              active ? 'bg-dark-500 text-accent' : 'text-slate-500 hover:text-slate-300'
                             }`}
                           >
-                            <Icon className="w-3 h-3" />
-                            {opt.label}
+                            <Icon className="w-3 h-3 shrink-0" />
+                            <span className="hidden sm:inline truncate">{opt.label}</span>
                           </button>
                         );
                       })}
                     </div>
                     {inputs.length > 1 && (
-                      <button onClick={() => removeInput(i)} className="ml-auto text-slate-600 hover:text-red-400 transition-colors">
+                      <button onClick={() => removeInput(i)} className="ml-1 text-slate-600 hover:text-red-400 transition-colors shrink-0">
                         <X className="w-3.5 h-3.5" />
                       </button>
                     )}
@@ -221,12 +229,8 @@ export default function Investigate() {
                   <EntitySearchInput
                     value={inp.name}
                     onChange={(v) => updateInput(i, { name: v })}
-                    type={inp.type}
-                    placeholder={
-                      inp.type === 'recipient' ? 'Search vendors, companies…' :
-                      inp.type === 'agency'    ? 'Search agencies…' :
-                                                 'Search employees, people…'
-                    }
+                    type={modeToEntityType(inp.mode)}
+                    placeholder={MODE_OPTIONS.find(o => o.value === inp.mode)?.hint ?? 'Search…'}
                   />
                 </div>
               ))}
